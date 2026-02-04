@@ -1,6 +1,7 @@
 """
 Script para importar órdenes de Shopify desde archivo CSV.
 Compatible con el formato de exportación estándar de Shopify.
+Maneja el formato especial donde cada fila está envuelta en comillas.
 """
 
 def main():
@@ -8,6 +9,7 @@ def main():
     import os
     import django
     import csv
+    import re
     from decimal import Decimal
     from datetime import datetime
     
@@ -44,7 +46,7 @@ def main():
         """Convierte a string de forma segura."""
         if val is None or (isinstance(val, str) and val.strip() == ""):
             return default
-        return str(val).strip()
+        return str(val).strip()[:500]  # Limitar longitud
     
     def safe_decimal(val, default='0.00'):
         """Convierte a Decimal de forma segura."""
@@ -102,8 +104,27 @@ def main():
         
         return None
     
+    def clean_shopify_row(line):
+        """
+        Limpia una fila del formato especial de Shopify.
+        El formato tiene cada fila envuelta en comillas: "#B4959,...";
+        """
+        line = line.strip()
+        
+        # Remover ; final si existe
+        if line.endswith(';'):
+            line = line[:-1]
+        
+        # Remover \r si existe  
+        line = line.replace('\r', '')
+        
+        # Si la fila empieza y termina con comillas dobles, quitarlas
+        if line.startswith('"') and line.endswith('"'):
+            line = line[1:-1]
+        
+        return line
+    
     # Mapeo de columnas CSV a campos del modelo
-    # Las claves son los nombres de columna en el CSV de Shopify
     COLUMN_MAP = {
         'Name': 'order_name',
         'Email': 'email',
@@ -207,7 +228,6 @@ def main():
     # MODO APPEND: Solo agregar registros nuevos, no duplicar
     # ============================================================
     # Identificador único: order_name + lineitem_sku + lineitem_name
-    # (Una orden puede tener múltiples líneas de producto)
     
     # Obtener registros existentes para evitar duplicados
     existing_keys = set()
@@ -225,35 +245,52 @@ def main():
     filas_procesadas = 0
     
     try:
-        # Leer el archivo y limpiar formato problemático
+        # Leer el archivo
         with open(archivo_csv, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
         
-        # Verificar si las filas de datos están envueltas en comillas
-        # (problema común en exports de Shopify)
-        cleaned_lines = [lines[0]]  # Header siempre bien
-        for line in lines[1:]:
-            line = line.strip()
-            if line:
-                # Si la línea empieza y termina con comillas, quitarlas
-                if line.startswith('"') and line.endswith('"'):
-                    # Quitar comillas externas y limpiar comillas dobles internas
-                    line = line[1:-1]
-                    # Reemplazar "" por " (escape de comillas en CSV)
-                    line = line.replace('""', '"')
-                cleaned_lines.append(line + '\n')
+        if len(lines) < 2:
+            return "El archivo CSV está vacío o solo tiene encabezados."
         
-        # Crear archivo temporal limpio
+        # El header es la primera línea (limpia)
+        header_line = lines[0].strip().replace('\r', '')
+        if header_line.endswith(';'):
+            header_line = header_line[:-1]
+        
+        # Parsear los nombres de columnas
+        # Usar csv.reader para manejar correctamente las comillas
         import io
-        cleaned_csv = io.StringIO(''.join(cleaned_lines))
+        header_reader = csv.reader(io.StringIO(header_line))
+        headers = next(header_reader)
         
-        reader = csv.DictReader(cleaned_csv, delimiter=',')
-        
-        for row_num, row in enumerate(reader, start=2):
+        # Procesar cada fila de datos
+        for line_num, line in enumerate(lines[1:], start=2):
+            line = line.strip()
+            if not line:
+                continue
+            
             filas_procesadas += 1
             
             try:
-                # Construir el diccionario de datos
+                # Limpiar la fila del formato especial de Shopify
+                cleaned_line = clean_shopify_row(line)
+                
+                # Parsear la fila usando csv.reader
+                row_reader = csv.reader(io.StringIO(cleaned_line))
+                values = next(row_reader, None)
+                
+                if values is None or len(values) == 0:
+                    continue
+                
+                # Crear diccionario con los valores
+                row = {}
+                for i, header in enumerate(headers):
+                    if i < len(values):
+                        row[header] = values[i]
+                    else:
+                        row[header] = ""
+                
+                # Construir el diccionario de datos para el modelo
                 data = {}
                 
                 for csv_col, model_field in COLUMN_MAP.items():
@@ -294,7 +331,7 @@ def main():
                 existing_keys.add(unique_key)
                 
             except Exception as e:
-                error_msg = f"Fila {row_num}: {str(e)[:100]}"
+                error_msg = f"Fila {line_num}: {str(e)[:100]}"
                 errores.append(error_msg)
                 # Continuar con la siguiente fila
                 continue
@@ -322,7 +359,8 @@ def main():
     except FileNotFoundError:
         return f"Error: No se encontró el archivo {archivo_csv}"
     except Exception as e:
-        return f"Error al procesar el archivo: {str(e)}"
+        import traceback
+        return f"Error al procesar el archivo: {str(e)}<br><br>Detalle: {traceback.format_exc()[:500]}"
 
 
 # Ejecutar desde línea de comando
