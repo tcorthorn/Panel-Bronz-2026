@@ -248,56 +248,56 @@ def main():
         cleaned_csv = io.StringIO(''.join(cleaned_lines))
         
         reader = csv.DictReader(cleaned_csv, delimiter=',')
+        
+        for row_num, row in enumerate(reader, start=2):
+            filas_procesadas += 1
             
-            for row_num, row in enumerate(reader, start=2):
-                filas_procesadas += 1
+            try:
+                # Construir el diccionario de datos
+                data = {}
                 
-                try:
-                    # Construir el diccionario de datos
-                    data = {}
+                for csv_col, model_field in COLUMN_MAP.items():
+                    raw_value = row.get(csv_col, "")
                     
-                    for csv_col, model_field in COLUMN_MAP.items():
-                        raw_value = row.get(csv_col, "")
-                        
-                        # Convertir según el tipo de campo
-                        if model_field in DATE_FIELDS:
-                            data[model_field] = parse_datetime(raw_value)
-                        elif model_field in DECIMAL_FIELDS:
-                            data[model_field] = safe_decimal(raw_value)
-                        elif model_field in INT_FIELDS:
-                            data[model_field] = safe_int(raw_value)
-                        elif model_field in BOOL_FIELDS:
-                            data[model_field] = safe_bool(raw_value)
-                        else:
-                            data[model_field] = safe_str(raw_value)
-                    
-                    # Extraer nombre del cliente del billing_name si no hay customer_name
-                    if not data.get('customer_name') and data.get('billing_name'):
-                        data['customer_name'] = data['billing_name']
-                    
-                    # ============================================================
-                    # VERIFICAR SI YA EXISTE (evitar duplicados)
-                    # ============================================================
-                    unique_key = f"{data.get('order_name', '')}|{data.get('lineitem_sku', '')}|{data.get('lineitem_name', '')}"
-                    
-                    if unique_key in existing_keys:
-                        # Ya existe, no importar
-                        ordenes_duplicadas += 1
-                        continue
-                    
-                    # Crear el registro (APPEND - agrega a continuación de los existentes)
-                    orden = ShopifyOrder(**data)
-                    orden.save()
-                    ordenes_creadas += 1
-                    
-                    # Agregar a las claves existentes para evitar duplicados dentro del mismo archivo
-                    existing_keys.add(unique_key)
-                    
-                except Exception as e:
-                    error_msg = f"Fila {row_num}: {str(e)[:100]}"
-                    errores.append(error_msg)
-                    # Continuar con la siguiente fila
+                    # Convertir según el tipo de campo
+                    if model_field in DATE_FIELDS:
+                        data[model_field] = parse_datetime(raw_value)
+                    elif model_field in DECIMAL_FIELDS:
+                        data[model_field] = safe_decimal(raw_value)
+                    elif model_field in INT_FIELDS:
+                        data[model_field] = safe_int(raw_value)
+                    elif model_field in BOOL_FIELDS:
+                        data[model_field] = safe_bool(raw_value)
+                    else:
+                        data[model_field] = safe_str(raw_value)
+                
+                # Extraer nombre del cliente del billing_name si no hay customer_name
+                if not data.get('customer_name') and data.get('billing_name'):
+                    data['customer_name'] = data['billing_name']
+                
+                # ============================================================
+                # VERIFICAR SI YA EXISTE (evitar duplicados)
+                # ============================================================
+                unique_key = f"{data.get('order_name', '')}|{data.get('lineitem_sku', '')}|{data.get('lineitem_name', '')}"
+                
+                if unique_key in existing_keys:
+                    # Ya existe, no importar
+                    ordenes_duplicadas += 1
                     continue
+                
+                # Crear el registro (APPEND - agrega a continuación de los existentes)
+                orden = ShopifyOrder(**data)
+                orden.save()
+                ordenes_creadas += 1
+                
+                # Agregar a las claves existentes para evitar duplicados dentro del mismo archivo
+                existing_keys.add(unique_key)
+                
+            except Exception as e:
+                error_msg = f"Fila {row_num}: {str(e)[:100]}"
+                errores.append(error_msg)
+                # Continuar con la siguiente fila
+                continue
         
         total_existentes_despues = ShopifyOrder.objects.count()
         
