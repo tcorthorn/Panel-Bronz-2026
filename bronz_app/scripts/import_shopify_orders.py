@@ -225,25 +225,29 @@ def main():
     filas_procesadas = 0
     
     try:
+        # Leer el archivo y limpiar formato problemático
         with open(archivo_csv, 'r', encoding='utf-8-sig') as f:
-            # Leer primera línea para detectar delimitador manualmente
-            first_line = f.readline()
-            f.seek(0)
-            
-            # Detectar delimitador contando ocurrencias en la primera línea
-            comma_count = first_line.count(',')
-            semicolon_count = first_line.count(';')
-            tab_count = first_line.count('\t')
-            
-            # Usar el delimitador más frecuente
-            if semicolon_count > comma_count and semicolon_count > tab_count:
-                delimiter = ';'
-            elif tab_count > comma_count and tab_count > semicolon_count:
-                delimiter = '\t'
-            else:
-                delimiter = ','
-            
-            reader = csv.DictReader(f, delimiter=delimiter)
+            lines = f.readlines()
+        
+        # Verificar si las filas de datos están envueltas en comillas
+        # (problema común en exports de Shopify)
+        cleaned_lines = [lines[0]]  # Header siempre bien
+        for line in lines[1:]:
+            line = line.strip()
+            if line:
+                # Si la línea empieza y termina con comillas, quitarlas
+                if line.startswith('"') and line.endswith('"'):
+                    # Quitar comillas externas y limpiar comillas dobles internas
+                    line = line[1:-1]
+                    # Reemplazar "" por " (escape de comillas en CSV)
+                    line = line.replace('""', '"')
+                cleaned_lines.append(line + '\n')
+        
+        # Crear archivo temporal limpio
+        import io
+        cleaned_csv = io.StringIO(''.join(cleaned_lines))
+        
+        reader = csv.DictReader(cleaned_csv, delimiter=',')
             
             for row_num, row in enumerate(reader, start=2):
                 filas_procesadas += 1
