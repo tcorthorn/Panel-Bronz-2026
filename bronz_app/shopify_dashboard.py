@@ -109,7 +109,16 @@ def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
     # ========================================
     # 4. PRODUCTOS MÁS VENDIDOS (Top 10)
     # ========================================
-    top_products = orders.exclude(lineitem_name='').values('lineitem_name', 'lineitem_sku').annotate(
+    # Usar SKU para agrupar y buscar nombre real en Catálogo
+    from bronz_app.models import Catalogo
+    
+    # Crear diccionario de SKU -> nombre del producto desde Catálogo
+    catalogo_dict = {}
+    for cat in Catalogo.objects.all():
+        catalogo_dict[cat.sku.upper()] = cat.producto
+    
+    # Agrupar por SKU (ignorando el nombre de lineitem que puede tener "PREVENTA")
+    top_products_by_sku = orders.exclude(lineitem_sku='').values('lineitem_sku').annotate(
         quantity=Sum('lineitem_quantity'),
         revenue=Sum(F('lineitem_price') * F('lineitem_quantity'))
     ).order_by('-quantity')[:10]
@@ -118,16 +127,25 @@ def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
     products_quantities = []
     products_revenue = []
     
-    for product in top_products:
-        name = product['lineitem_name'][:30] + '...' if len(product['lineitem_name']) > 30 else product['lineitem_name']
-        products_labels.append(name)
+    for product in top_products_by_sku:
+        sku = product['lineitem_sku'].upper() if product['lineitem_sku'] else ''
+        # Buscar nombre real en catálogo, si no existe usar SKU
+        name = catalogo_dict.get(sku, sku)
+        if len(name) > 35:
+            name = name[:32] + '...'
+        products_labels.append(f"{name} ({sku})" if sku else name)
         products_quantities.append(product['quantity'] or 0)
         products_revenue.append(float(product['revenue'] or 0))
     
     # ========================================
     # 5. VENTAS POR CIUDAD (Top 10)
     # ========================================
-    sales_by_city = orders.exclude(shipping_city='').values('shipping_city').annotate(
+    # Normalizar ciudades (ignorar mayúsculas/minúsculas)
+    from django.db.models.functions import Lower
+    
+    sales_by_city_raw = orders.exclude(shipping_city='').annotate(
+        city_normalized=Lower('shipping_city')
+    ).values('city_normalized').annotate(
         total=Sum('total'),
         orders=Count('order_name', distinct=True)
     ).order_by('-total')[:10]
@@ -136,30 +154,34 @@ def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
     cities_revenue = []
     cities_orders = []
     
-    for city in sales_by_city:
-        cities_labels.append(city['shipping_city'])
+    for city in sales_by_city_raw:
+        # Capitalizar el nombre de la ciudad para mostrar
+        city_name = city['city_normalized'].title() if city['city_normalized'] else ''
+        cities_labels.append(city_name)
         cities_revenue.append(float(city['total'] or 0))
         cities_orders.append(city['orders'] or 0)
     
     # ========================================
     # 6. VENTAS POR REGIÓN/PROVINCIA
     # ========================================
-    sales_by_region = orders.exclude(shipping_province_name='').values('shipping_province_name').annotate(
+    # Normalizar regiones (ignorar mayúsculas/minúsculas)
+    sales_by_region = orders.exclude(shipping_province_name='').annotate(
+        region_normalized=Lower('shipping_province_name')
+    ).values('region_normalized').annotate(
         total=Sum('total'),
         orders=Count('order_name', distinct=True)
     ).order_by('-total')[:10]
     
     # Si no hay datos en shipping_province_name, usar shipping_province
     if not sales_by_region:
-        sales_by_region = orders.exclude(shipping_province='').values('shipping_province').annotate(
+        sales_by_region = orders.exclude(shipping_province='').annotate(
+            region_normalized=Lower('shipping_province')
+        ).values('region_normalized').annotate(
             total=Sum('total'),
             orders=Count('order_name', distinct=True)
         ).order_by('-total')[:10]
-        
-        regions_labels = [r['shipping_province'] for r in sales_by_region]
-    else:
-        regions_labels = [r['shipping_province_name'] for r in sales_by_region]
     
+    regions_labels = [r['region_normalized'].title() if r['region_normalized'] else '' for r in sales_by_region]
     regions_revenue = [float(r['total'] or 0) for r in sales_by_region]
     regions_orders = [r['orders'] or 0 for r in sales_by_region]
     
