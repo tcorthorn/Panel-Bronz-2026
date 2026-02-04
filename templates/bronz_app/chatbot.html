@@ -1,0 +1,434 @@
+{% extends "bronz_app/base.html" %}
+{% load static %}
+
+{% block title %}Chatbot BRONZ - Asistente de Productos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        max-width: 800px;
+        margin: 0 auto;
+        height: calc(100vh - 200px);
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .chat-header {
+        background: linear-gradient(135deg, #d4a574 0%, #c9956c 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .chat-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    
+    .chat-header p {
+        margin: 5px 0 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+    }
+    
+    .message {
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .message.user {
+        align-items: flex-end;
+    }
+    
+    .message.assistant {
+        align-items: flex-start;
+    }
+    
+    .message-bubble {
+        max-width: 75%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        line-height: 1.5;
+        word-wrap: break-word;
+    }
+    
+    .message.user .message-bubble {
+        background: linear-gradient(135deg, #d4a574 0%, #c9956c 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .message.assistant .message-bubble {
+        background: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        color: #999;
+        margin-top: 4px;
+        padding: 0 8px;
+    }
+    
+    .chat-input-container {
+        padding: 15px 20px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .chat-input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    #chat-input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+    
+    #chat-input:focus {
+        border-color: #d4a574;
+    }
+    
+    #send-btn {
+        background: linear-gradient(135deg, #d4a574 0%, #c9956c 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    #send-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(212, 165, 116, 0.4);
+    }
+    
+    #send-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .clear-btn {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .clear-btn:hover {
+        background: #5a6268;
+    }
+    
+    .typing-indicator {
+        display: none;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 18px;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        max-width: 80px;
+    }
+    
+    .typing-indicator.active {
+        display: inline-block;
+    }
+    
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #d4a574;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+        0%, 60%, 100% {
+            transform: translateY(0);
+        }
+        30% {
+            transform: translateY(-8px);
+        }
+    }
+    
+    .welcome-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+    }
+    
+    .welcome-message h3 {
+        color: #d4a574;
+        margin-bottom: 10px;
+    }
+    
+    .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    
+    .suggestion-btn {
+        background: white;
+        border: 2px solid #d4a574;
+        color: #d4a574;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.3s;
+    }
+    
+    .suggestion-btn:hover {
+        background: #d4a574;
+        color: white;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .chat-container {
+            height: calc(100vh - 150px);
+            border-radius: 0;
+        }
+        
+        .message-bubble {
+            max-width: 85%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-3">
+        <div class="col">
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Panel
+            </a>
+        </div>
+    </div>
+    
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>🧴 Asistente BRONZ</h2>
+            <p>Pregúntame sobre nuestros productos de belleza y cuidado personal</p>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <div class="welcome-message" id="welcome-message">
+                <h3>¡Hola! 👋</h3>
+                <p>Soy tu asistente virtual de BRONZ. Puedo ayudarte con información sobre nuestros productos, cómo usarlos, ingredientes y más.</p>
+                <div class="suggestions">
+                    <button class="suggestion-btn" onclick="sendSuggestion('¿Cómo se usa el Mousse Autobronz?')">¿Cómo usar el Autobronz?</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion('¿Cuánto dura el bronceado?')">¿Cuánto dura?</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion('¿Qué ingredientes tiene?')">Ingredientes</button>
+                    <button class="suggestion-btn" onclick="sendSuggestion('¿Se puede usar en la cara?')">¿Usar en la cara?</button>
+                </div>
+            </div>
+            
+            <div class="message assistant" style="display: none;">
+                <div class="typing-indicator" id="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="d-flex justify-content-end mb-2">
+                <button class="clear-btn" onclick="clearChat()">
+                    <i class="fas fa-trash"></i> Limpiar chat
+                </button>
+            </div>
+            <div class="chat-input-wrapper">
+                <input type="text" id="chat-input" placeholder="Escribe tu pregunta aquí..." autocomplete="off">
+                <button id="send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let conversationHistory = [];
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('send-btn');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const welcomeMessage = document.getElementById('welcome-message');
+    
+    // Enviar con Enter
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    function sendSuggestion(text) {
+        chatInput.value = text;
+        sendMessage();
+    }
+    
+    function formatTime() {
+        const now = new Date();
+        return now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    function addMessage(content, role) {
+        // Ocultar mensaje de bienvenida
+        welcomeMessage.style.display = 'none';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.innerHTML = content.replace(/\n/g, '<br>');
+        
+        const time = document.createElement('div');
+        time.className = 'message-time';
+        time.textContent = formatTime();
+        
+        messageDiv.appendChild(bubble);
+        messageDiv.appendChild(time);
+        
+        // Insertar antes del indicador de typing
+        chatMessages.insertBefore(messageDiv, typingIndicator.parentElement);
+        
+        // Scroll al final
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function showTyping() {
+        typingIndicator.classList.add('active');
+        typingIndicator.parentElement.style.display = 'flex';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function hideTyping() {
+        typingIndicator.classList.remove('active');
+        typingIndicator.parentElement.style.display = 'none';
+    }
+    
+    async function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        // Limpiar input y deshabilitar botón
+        chatInput.value = '';
+        sendBtn.disabled = true;
+        
+        // Mostrar mensaje del usuario
+        addMessage(message, 'user');
+        
+        // Mostrar indicador de typing
+        showTyping();
+        
+        try {
+            const response = await fetch('/api/chat/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    history: conversationHistory
+                })
+            });
+            
+            const data = await response.json();
+            
+            hideTyping();
+            
+            if (response.ok) {
+                addMessage(data.response, 'assistant');
+                conversationHistory = data.history;
+            } else {
+                addMessage('Lo siento, hubo un error. Por favor intenta de nuevo.', 'assistant');
+            }
+        } catch (error) {
+            hideTyping();
+            addMessage('Error de conexión. Por favor verifica tu conexión e intenta de nuevo.', 'assistant');
+        }
+        
+        sendBtn.disabled = false;
+        chatInput.focus();
+    }
+    
+    async function clearChat() {
+        conversationHistory = [];
+        
+        // Limpiar mensajes excepto el welcome y typing
+        const messages = chatMessages.querySelectorAll('.message:not(:last-child)');
+        messages.forEach(msg => {
+            if (!msg.querySelector('.typing-indicator') && !msg.querySelector('.welcome-message')) {
+                msg.remove();
+            }
+        });
+        
+        // Mostrar mensaje de bienvenida
+        welcomeMessage.style.display = 'block';
+        
+        // Llamar al API para limpiar (opcional, para mantener consistencia)
+        try {
+            await fetch('/api/chat/clear/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+        } catch (error) {
+            console.log('Error limpiando chat en servidor');
+        }
+    }
+    
+    // Focus al input al cargar
+    chatInput.focus();
+</script>
+{% endblock %}

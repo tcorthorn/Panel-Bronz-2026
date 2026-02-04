@@ -1,0 +1,227 @@
+
+
+{% extends "bronz_app/base.html" %}
+{% block title %}Comparativa Ventas - BRONZ{% endblock %}
+{% block content %}
+{% load humanize %}
+<style>
+  body { background: #f5f5f5 !important; }
+
+  h1 {
+    color: #29495c;
+    font-weight: 600;
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .container-comparativa {
+    max-width: 1200px;
+    margin: auto;
+    padding: 1.5rem;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+    margin-bottom: 1.8rem;
+    border: 1px solid #e3e6ea;
+  }
+
+  .card-header {
+    background: #e4edf4;
+    color: #417690;
+    font-weight: 600;
+    font-size: 1.1em;
+    border-bottom: 1px solid #e3e6ea;
+    border-radius: 10px 10px 0 0;
+    padding: .9rem 1.2rem;
+  }
+
+  .card-body {
+    padding: 1.2rem;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead {
+    background-color: #e4edf4;
+    color: #29495c;
+  }
+
+  th, td {
+    text-align: center;
+    padding: 0.6rem;
+    border: 1px solid #e3e6ea;
+    font-size: 0.96em;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f8f9fb;
+  }
+
+  .btn-admin {
+    display: inline-block;
+    border: none;
+    background: #417690;
+    color: #fff;
+    border-radius: 5px;
+    font-weight: 500;
+    font-size: 1em;
+    padding: .5rem 1rem;
+    margin-top: .5rem;
+    transition: background .13s;
+  }
+
+  .btn-admin:hover {
+    background: #29597b;
+    color: #fff;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 360px !important;
+  }
+
+  @media (max-width: 768px) {
+    h1 { font-size: 1.4rem; }
+    th, td { font-size: 0.85em; padding: 0.4rem; }
+    .card-body { padding: 0.8rem; }
+  }
+
+  @media (max-width: 480px) {
+    .container-comparativa { padding: 1rem; }
+  }
+</style>
+
+<div class="container-comparativa">
+  <h1>📊 Comparativa de Ventas Reales vs Proyectadas ({{ anio }})</h1>
+
+  <!-- Selector de anio -->
+  <form method="get" class="mb-3 d-flex flex-wrap align-items-center gap-2">
+    <label for="anio" class="me-2"><b>Seleccionar anio:</b></label>
+    <input type="number" name="anio" id="anio" value="{{ anio }}" min="2024" max="2026"
+           class="form-control" style="width:120px;">
+    <button class="btn-admin success" type="submit">🔁 Actualizar</button>
+  </form>
+
+  <!-- CARD: GRÁFICO -->
+  <div class="card">
+    <div class="card-header">📈 Gráfico Comparativo</div>
+    <div class="card-body">
+      <canvas id="graficoComparativo"></canvas>
+    </div>
+  </div>
+
+  <!-- CARD: TABLA -->
+  <div class="card">
+    <div class="card-header">📋 Detalle Mensual</div>
+    <div class="card-body table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Mes</th>
+            <th>Venta Proyectada</th>
+            <th>Venta Real</th>
+            <th>Diferencia</th>
+            <th>% Cumplimiento</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fila in datos %}
+          <tr>
+            <td>{{ fila.mes }}</td>
+            <td>${{ fila.venta_proyectada|floatformat:0|intcomma }}</td>
+            <td>${{ fila.venta_real|floatformat:0|intcomma }}</td>
+            <td>${{ fila.diferencia|floatformat:0|intcomma }}</td>
+            <td>{{ fila.cumplimiento }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <a href="{% url 'home' %}" class="btn-admin secondary">⬅️ Volver al Panel</a>
+</div>
+
+<!-- SCRIPT: Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctx = document.getElementById('graficoComparativo').getContext('2d');
+
+const meses = {{ meses_json|safe }};
+const ventasReales = {{ ventas_reales_json|safe }};
+const ventasProyectadas = {{ ventas_proyectadas_json|safe }};
+
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: meses.map(m => new Date(2025, m-1, 1).toLocaleString('es', { month: 'short' })),
+      datasets: [
+        {
+          label: 'Venta Real',
+          data: ventasReales,
+          borderColor: '#2c6ba0',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3
+        },
+        {
+          label: 'Venta Proyectada',
+          data: ventasProyectadas,
+          borderColor: '#83b1c9',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: { color: '#29495c' }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': $' + context.formattedValue;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { return '$' + value.toLocaleString(); },
+            color: '#29495c'
+          },
+          grid: { color: '#e3e6ea' }
+        },
+        x: {
+          ticks: { color: '#29495c' },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+});
+</script>
+
+{% endblock %}

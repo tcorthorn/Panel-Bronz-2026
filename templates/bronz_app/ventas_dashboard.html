@@ -1,0 +1,763 @@
+{% extends "bronz_app/base.html" %}
+
+{% block title %}Dashboard Ventas Shopify - BRONZ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* Header */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .dashboard-header h1 {
+        color: #29495c;
+        font-weight: 600;
+        font-size: 1.8rem;
+        margin: 0;
+    }
+    
+    .header-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-chat {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 25px;
+        padding: 10px 20px;
+        text-decoration: none;
+        color: white;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn-chat:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #6c757d;
+        color: white;
+        border-radius: 25px;
+        padding: 10px 20px;
+        text-decoration: none;
+        font-size: 0.95rem;
+    }
+    
+    .btn-back:hover {
+        background: #5a6268;
+        color: white;
+    }
+    
+    /* KPI Cards */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .kpi-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+    
+    .kpi-card .icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .kpi-card .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #29495c;
+    }
+    
+    .kpi-card .label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    /* Charts Grid */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 991px) {
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .chart-card h3 {
+        font-size: 1.1rem;
+        color: #29495c;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 280px;
+    }
+    
+    /* Table */
+    .table-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+    }
+    
+    .table-card h3 {
+        font-size: 1.1rem;
+        color: #29495c;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .data-table th {
+        background: #f8f9fa;
+        padding: 12px 10px;
+        text-align: left;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .data-table td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-secondary {
+        background: #e9ecef;
+        color: #495057;
+    }
+    
+    /* Chat Modal */
+    .chat-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .chat-modal.active {
+        display: flex;
+    }
+    
+    .chat-window {
+        background: white;
+        width: 90%;
+        max-width: 600px;
+        height: 80vh;
+        max-height: 700px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .chat-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    
+    .chat-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        opacity: 0.8;
+    }
+    
+    .chat-close:hover {
+        opacity: 1;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background: #f8f9fa;
+    }
+    
+    .chat-message {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-message.user {
+        align-items: flex-end;
+    }
+    
+    .chat-message.assistant {
+        align-items: flex-start;
+    }
+    
+    .chat-bubble {
+        max-width: 80%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        line-height: 1.5;
+        font-size: 0.95rem;
+    }
+    
+    .chat-message.user .chat-bubble {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    
+    .chat-message.assistant .chat-bubble {
+        background: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .chat-input-area {
+        padding: 16px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .chat-input-area input {
+        flex: 1;
+        padding: 12px 16px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 1rem;
+        outline: none;
+    }
+    
+    .chat-input-area input:focus {
+        border-color: #667eea;
+    }
+    
+    .chat-input-area button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    .typing-indicator {
+        display: none;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 18px;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .typing-indicator.active {
+        display: inline-block;
+    }
+    
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #667eea;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: typing 1.4s infinite;
+    }
+    
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-8px); }
+    }
+    
+    .welcome-chat {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+    }
+    
+    .welcome-chat h4 {
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+    
+    .quick-questions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 15px;
+    }
+    
+    .quick-btn {
+        background: white;
+        border: 2px solid #667eea;
+        color: #667eea;
+        padding: 6px 14px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+    
+    .quick-btn:hover {
+        background: #667eea;
+        color: white;
+    }
+    
+    /* Loading */
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 12px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container py-4">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1>📊 Dashboard Ventas Shopify</h1>
+        <div class="header-buttons">
+            <button class="btn-chat" onclick="openChat()">
+                <span>💬</span> Chat de Ventas
+            </button>
+            <a href="{% url 'home' %}" class="btn-back">
+                <span>←</span> Volver
+            </a>
+        </div>
+    </div>
+    
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-container">
+        <div class="loading"><div class="spinner"></div> Cargando...</div>
+    </div>
+    
+    <!-- Charts -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>📈 Ventas por Día</h3>
+            <div class="chart-container">
+                <canvas id="chartVentasDia"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>🏆 Top Productos</h3>
+            <div class="chart-container">
+                <canvas id="chartTopProductos"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>🗺️ Ventas por Ciudad</h3>
+            <div class="chart-container">
+                <canvas id="chartCiudades"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h3>💳 Métodos de Pago</h3>
+            <div class="chart-container">
+                <canvas id="chartMetodosPago"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Orders Table -->
+    <div class="table-card">
+        <h3>🛒 Últimos Pedidos</h3>
+        <div class="table-responsive">
+            <table class="data-table" id="pedidos-table">
+                <thead>
+                    <tr>
+                        <th>Pedido</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Ciudad</th>
+                        <th>Total</th>
+                        <th>Pago</th>
+                        <th>Envío</th>
+                    </tr>
+                </thead>
+                <tbody id="pedidos-body">
+                    <tr><td colspan="7" class="loading"><div class="spinner"></div> Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Modal -->
+<div class="chat-modal" id="chatModal">
+    <div class="chat-window">
+        <div class="chat-header">
+            <h3>💬 Chat de Ventas</h3>
+            <button class="chat-close" onclick="closeChat()">×</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-chat">
+                <h4>¡Hola! 👋</h4>
+                <p>Soy tu asistente de ventas. Pregúntame sobre tus datos de Shopify.</p>
+                <div class="quick-questions">
+                    <button class="quick-btn" onclick="askQuestion('¿Cuánto vendimos en total?')">Total vendido</button>
+                    <button class="quick-btn" onclick="askQuestion('¿Cuál es el producto más vendido?')">Top producto</button>
+                    <button class="quick-btn" onclick="askQuestion('¿Cuántos pedidos hay pendientes?')">Pendientes</button>
+                    <button class="quick-btn" onclick="askQuestion('¿Cuál es el ticket promedio?')">Ticket promedio</button>
+                </div>
+            </div>
+            <div class="chat-message assistant" style="display:none;">
+                <div class="typing-indicator" id="typingIndicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Escribe tu pregunta..." onkeypress="if(event.key==='Enter')sendChatMessage()">
+            <button onclick="sendChatMessage()">Enviar</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let chatHistory = [];
+    const formatCurrency = (n) => '$' + n.toLocaleString('es-CL');
+    
+    // Load Dashboard Data
+    async function loadDashboard() {
+        try {
+            // KPIs
+            const statsRes = await fetch('/api/ventas/stats/');
+            const stats = await statsRes.json();
+            
+            document.getElementById('kpi-container').innerHTML = `
+                <div class="kpi-card">
+                    <div class="icon">💰</div>
+                    <div class="value">${formatCurrency(stats.total_ventas)}</div>
+                    <div class="label">Total Ventas</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="icon">📦</div>
+                    <div class="value">${stats.num_pedidos}</div>
+                    <div class="label">Pedidos</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="icon">🎫</div>
+                    <div class="value">${formatCurrency(stats.ticket_promedio)}</div>
+                    <div class="label">Ticket Promedio</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="icon">🛍️</div>
+                    <div class="value">${stats.productos_vendidos}</div>
+                    <div class="label">Productos Vendidos</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="icon">✅</div>
+                    <div class="value">${stats.pedidos_fulfilled}</div>
+                    <div class="label">Enviados</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="icon">⏳</div>
+                    <div class="value">${stats.pedidos_pending}</div>
+                    <div class="label">Pendientes</div>
+                </div>
+            `;
+            
+            // Charts
+            await loadCharts();
+            
+            // Recent Orders
+            await loadPedidos();
+            
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+    
+    async function loadCharts() {
+        // Ventas por día
+        const ventasDiaRes = await fetch('/api/ventas/por-dia/');
+        const ventasDia = await ventasDiaRes.json();
+        
+        new Chart(document.getElementById('chartVentasDia'), {
+            type: 'line',
+            data: {
+                labels: ventasDia.data.map(d => d.fecha.slice(5)),
+                datasets: [{
+                    label: 'Ventas',
+                    data: ventasDia.data.map(d => d.total),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+        
+        // Top productos
+        const topRes = await fetch('/api/ventas/top-productos/?limit=5');
+        const topData = await topRes.json();
+        
+        new Chart(document.getElementById('chartTopProductos'), {
+            type: 'bar',
+            data: {
+                labels: topData.data.map(d => d.producto.substring(0, 20) + '...'),
+                datasets: [{
+                    label: 'Cantidad',
+                    data: topData.data.map(d => d.cantidad),
+                    backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } }
+            }
+        });
+        
+        // Ciudades
+        const ciudadesRes = await fetch('/api/ventas/por-ciudad/');
+        const ciudadesData = await ciudadesRes.json();
+        
+        new Chart(document.getElementById('chartCiudades'), {
+            type: 'doughnut',
+            data: {
+                labels: ciudadesData.data.slice(0, 5).map(d => d.ciudad),
+                datasets: [{
+                    data: ciudadesData.data.slice(0, 5).map(d => d.total),
+                    backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        // Métodos de pago
+        const pagoRes = await fetch('/api/ventas/por-metodo-pago/');
+        const pagoData = await pagoRes.json();
+        
+        new Chart(document.getElementById('chartMetodosPago'), {
+            type: 'pie',
+            data: {
+                labels: pagoData.data.map(d => d.metodo),
+                datasets: [{
+                    data: pagoData.data.map(d => d.total),
+                    backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#f5576c']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+    
+    async function loadPedidos() {
+        const res = await fetch('/api/ventas/pedidos-recientes/?limit=15');
+        const data = await res.json();
+        
+        const tbody = document.getElementById('pedidos-body');
+        tbody.innerHTML = data.data.map(p => `
+            <tr>
+                <td><strong>${p.pedido}</strong></td>
+                <td>${p.fecha}</td>
+                <td>${p.cliente}</td>
+                <td>${p.ciudad}</td>
+                <td>${formatCurrency(p.total)}</td>
+                <td><span class="badge ${p.estado_pago === 'paid' ? 'badge-success' : 'badge-warning'}">${p.estado_pago}</span></td>
+                <td><span class="badge ${p.estado_envio === 'fulfilled' ? 'badge-success' : 'badge-secondary'}">${p.estado_envio}</span></td>
+            </tr>
+        `).join('');
+    }
+    
+    // Chat Functions
+    function openChat() {
+        document.getElementById('chatModal').classList.add('active');
+        document.getElementById('chatInput').focus();
+    }
+    
+    function closeChat() {
+        document.getElementById('chatModal').classList.remove('active');
+    }
+    
+    function askQuestion(q) {
+        document.getElementById('chatInput').value = q;
+        sendChatMessage();
+    }
+    
+    function addChatMessage(content, role) {
+        const container = document.getElementById('chatMessages');
+        const welcome = container.querySelector('.welcome-chat');
+        if (welcome) welcome.style.display = 'none';
+        
+        const msg = document.createElement('div');
+        msg.className = `chat-message ${role}`;
+        msg.innerHTML = `<div class="chat-bubble">${content.replace(/\n/g, '<br>')}</div>`;
+        
+        container.insertBefore(msg, document.getElementById('typingIndicator').parentElement);
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        if (!message) return;
+        
+        input.value = '';
+        addChatMessage(message, 'user');
+        
+        const typing = document.getElementById('typingIndicator');
+        typing.classList.add('active');
+        typing.parentElement.style.display = 'flex';
+        
+        try {
+            const res = await fetch('/api/ventas/chat/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, history: chatHistory })
+            });
+            
+            const data = await res.json();
+            typing.classList.remove('active');
+            typing.parentElement.style.display = 'none';
+            
+            if (res.ok) {
+                addChatMessage(data.response, 'assistant');
+                chatHistory = data.history;
+            } else {
+                addChatMessage('Lo siento, hubo un error. Intenta de nuevo.', 'assistant');
+            }
+        } catch (e) {
+            typing.classList.remove('active');
+            typing.parentElement.style.display = 'none';
+            addChatMessage('Error de conexión.', 'assistant');
+        }
+    }
+    
+    // Close modal on outside click
+    document.getElementById('chatModal').addEventListener('click', function(e) {
+        if (e.target === this) closeChat();
+    });
+    
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

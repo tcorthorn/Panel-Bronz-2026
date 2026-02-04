@@ -1,0 +1,16 @@
+asgiref==3.8.1
+Django==5.2.1
+django-filter==25.1
+et-xmlfile==2.0.0
+numpy==2.2.6
+openpyxl==3.1.5
+pandas==2.2.3
+psycopg2-binary==2.9.10
+pyodbc==5.2.0
+python-dateutil==2.9.0.post0
+pytz==2025.2
+pywin32==310 ; sys_platform == "win32"
+six==1.17.0
+sqlparse==0.5.3
+tzdata==2025.2
+xlwings==0.33.15

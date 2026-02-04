@@ -1,0 +1,180 @@
+{% load formatos %}
+
+<div class="top-bar">
+    <h2>Dashboard Financiero BRONZ</h2>
+    <div class="top-bar-btns">
+        <form action="{% url 'home' %}" method="get" style="display: contents;">
+            <button type="submit" class="btn">
+                🏠 Volver al inicio
+            </button>
+        </form>
+        <button class="btn" onclick="exportResumenExcel()" type="button">
+            📥 Exportar a Excel
+        </button>
+    </div>
+</div>
+
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8f8fa; }
+    .top-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 36px; padding: 24px 30px 20px 30px;
+        border-bottom: 2px solid #e0e0e0; background: #fafbfc; gap: 18px;
+    }
+    .top-bar h2 { margin: 0; font-size: 2em; font-weight: 700; color: #1968a3; }
+    .top-bar-btns { display: flex; gap: 18px; }
+    .btn {
+        background: #1968a3; color: #fff; padding: 12px 28px; border: none;
+        border-radius: 7px; font-size: 1.05em; cursor: pointer;
+        transition: background 0.18s; font-weight: 500;
+        box-shadow: 0 1px 8px 0 #e0eaf7; outline: none; display: inline-block;
+    }
+    .btn:hover, .btn:focus { background: #0d47a1; }
+    .grafico-container {
+        background: #fff; border-radius: 18px; padding: 32px 24px 18px 24px;
+        margin-bottom: 36px; box-shadow: 0 2px 12px #c5d4ee33;
+        max-width: 1050px; margin-left: auto; margin-right: auto; min-height: 280px;
+    }
+    #graficoResultados {
+        display: block; margin: 0 auto; max-width: 98%; min-height: 220px;
+        background: #fcfdff; border-radius: 8px;
+    }
+    table#tabla-resumen-mensual {
+        border-collapse: separate; border-spacing: 0; width: 100%; background: #fff;
+        border-radius: 18px; box-shadow: 0 2px 16px 0 #dde5ee;
+        overflow: hidden; margin-bottom: 38px;
+    }
+    th, td {
+        border: 1px solid #dde3ec; padding: 7px 10px; text-align: right;
+        font-size: 0.98em; transition: background 0.16s;
+    }
+    th {
+        background: #eaf3fa; color: #1968a3; font-weight: 700;
+        text-align: center; letter-spacing: 0.02em;
+    }
+    tr.fila-calculada { background-color: #e3f2fd !important; }
+    tr.fila-calculada td, tr.fila-calculada th { font-weight: bold; }
+    td:first-child, th:first-child { text-align: left; }
+    tr:hover { background: #f5fbff; }
+</style>
+
+<!-- ===================== GRAFICO Chart.js ===================== 
+<div class="grafico-container">
+    <canvas id="graficoResultados" width="1000" height="260"></canvas>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Obtenemos los labels (meses) desde el contexto Django:
+    const labels = [{% for mes in meses %}"{{ mes }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    // Para cada fila de la tabla, construimos arrays de datos
+    // Solo graficamos los conceptos relevantes (ventas, costos, utilidad)
+    let dataVentas = [], dataCostos = [], dataUtilidad = [];
+    {% for slug, concepto, valores, acumulado in filas %}
+        {% if slug == "ventas" %}
+            dataVentas = [{% for v in valores %}{{ v|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        {% elif slug == "costos" %}
+            dataCostos = [{% for v in valores %}{{ v|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        {% elif slug == "utilidad" %}
+            dataUtilidad = [{% for v in valores %}{{ v|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+        {% endif %}
+    {% endfor %}
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('graficoResultados').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ventas',
+                        data: dataVentas,
+                        borderWidth: 3,
+                        borderColor: '#1976d2',
+                        backgroundColor: '#1976d220',
+                        pointRadius: 4,
+                        tension: 0.25,
+                        fill: false
+                    },
+                    {
+                        label: 'Costos',
+                        data: dataCostos,
+                        borderWidth: 3,
+                        borderColor: '#c62828',
+                        backgroundColor: '#c6282820',
+                        pointRadius: 4,
+                        tension: 0.25,
+                        fill: false
+                    },
+                    {
+                        label: 'Utilidad',
+                        data: dataUtilidad,
+                        borderWidth: 3,
+                        borderColor: '#2e7d32',
+                        backgroundColor: '#2e7d3220',
+                        borderDash: [7,6],
+                        pointRadius: 4,
+                        tension: 0.25,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { font: { size: 15 } } }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        title: { display: true, text: 'Mes' },
+                        ticks: {
+                            autoSkip: false,    // ← Forzar todos los meses
+                            minRotation: 35,
+                            font: { size: 13 }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Monto ($)' }
+                    }
+                }
+            }
+        });
+    });
+</script>
+-->
+<!-- =================== TABLA DE RESUMEN =================== -->
+<table id="tabla-resumen-mensual">
+    <thead>
+        <tr>
+            <th>Concepto</th>
+            {% for mes in meses %}
+                <th>{{ mes }}</th>
+            {% endfor %}
+            <th>Acumulado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for slug, concepto, valores, acumulado in filas %}
+            <tr {% if slug in filas_calculadas %}class="fila-calculada"{% endif %}>
+                <td>{{ concepto }}</td>
+                {% for valor in valores %}
+                    <td>{% if valor is not None %}{{ valor|miles_punto }}{% else %}—{% endif %}</td>
+                {% endfor %}
+                <td><strong>{{ acumulado|miles_punto }}</strong></td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- SheetJS para exportación a Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+function exportResumenExcel() {
+    var table = document.getElementById('tabla-resumen-mensual');
+    var wb = XLSX.utils.table_to_book(table, {sheet: "Resumen Mensual"});
+    XLSX.writeFile(wb, 'resumen_mensual.xlsx');
+}
+</script>
