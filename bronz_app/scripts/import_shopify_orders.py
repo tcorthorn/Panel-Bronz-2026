@@ -1,16 +1,24 @@
 """
-Script para importar órdenes de Shopify desde archivo CSV.
+Script DEFINITIVO para importar órdenes de Shopify desde archivo CSV.
 Compatible con el formato de exportación estándar de Shopify.
-Maneja el formato especial donde cada fila está envuelta en comillas.
+
+SOLUCIÓN COMPLETA:
+- Maneja CSVs con formato especial de Shopify (filas envueltas en comillas)
+- Todos los campos TextField para evitar límites de longitud
+- Detección automática de duplicados (modo APPEND)
+- Manejo robusto de errores por fila
+- Reportes detallados de importación
+
+Autor: Generado para Panel-Bronz
+Fecha: 2025
 """
 
 def main():
     import sys
     import os
-    import django
     import csv
     import re
-    from decimal import Decimal
+    from decimal import Decimal, InvalidOperation
     from datetime import datetime
     
     # Configuración Django
@@ -18,18 +26,25 @@ def main():
     PROJECT_DIR = os.path.dirname(BASE_DIR)
     sys.path.insert(0, PROJECT_DIR)
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "BRONZ.settings")
+    
+    import django
     django.setup()
     
     from bronz_app.models import ShopifyOrder
     
-    # Ruta del archivo CSV - buscar en carpetas comunes
+    # =========================================================================
+    # BÚSQUEDA DEL ARCHIVO CSV
+    # =========================================================================
     possible_paths = [
         os.path.join(PROJECT_DIR, "data", "orders_export.csv"),
         os.path.join(PROJECT_DIR, "data", "orders_export (1).csv"),
         os.path.join(PROJECT_DIR, "Otros", "orders_export.csv"),
         os.path.join(PROJECT_DIR, "Otros", "orders_export (1).csv"),
+        # Windows paths
         r"C:\Users\Thomas\OneDrive\BRONZ\Django-Bronz\data\orders_export.csv",
         r"C:\Users\Thomas\OneDrive\BRONZ\Django-Bronz\Otros\orders_export.csv",
+        r"C:\Panel-Bronz-2026-main\data\orders_export.csv",
+        r"C:\Panel-Bronz-2026-main\Otros\orders_export.csv",
     ]
     
     archivo_csv = None
@@ -39,42 +54,54 @@ def main():
             break
     
     if archivo_csv is None:
-        return "No se encontró el archivo CSV de órdenes Shopify. Coloque el archivo en la carpeta 'data' o 'Otros' con nombre 'orders_export.csv'"
+        return "❌ No se encontró el archivo CSV de órdenes Shopify. Coloque el archivo en la carpeta 'data' o 'Otros' con nombre 'orders_export.csv'"
     
-    # Funciones auxiliares para conversión segura
-    def safe_str(val, max_length=500, default=""):
-        """Convierte a string de forma segura, truncando si es necesario."""
-        if val is None or (isinstance(val, str) and val.strip() == ""):
-            return default
-        result = str(val).strip()
-        if len(result) > max_length:
-            result = result[:max_length]
-        return result
+    # =========================================================================
+    # FUNCIONES AUXILIARES DE CONVERSIÓN SEGURA
+    # =========================================================================
+    
+    def safe_str(val, max_length=None):
+        """Convierte a string de forma segura, opcionalmente truncando."""
+        if val is None:
+            return ""
+        val_str = str(val).strip()
+        if val_str.lower() in ('nan', 'none', 'null'):
+            return ""
+        # Limpiar comillas dobles escapadas
+        val_str = val_str.replace('""', '"').strip('"')
+        if max_length and len(val_str) > max_length:
+            return val_str[:max_length]
+        return val_str
     
     def safe_decimal(val, default='0.00'):
         """Convierte a Decimal de forma segura."""
         try:
-            if val is None or str(val).strip() == "" or str(val).strip().lower() == 'nan':
+            if val is None:
                 return Decimal(default)
-            clean_val = str(val).strip().replace(',', '')
-            return Decimal(clean_val)
-        except:
+            val_str = str(val).strip().replace(',', '').replace('""', '').strip('"')
+            if val_str == "" or val_str.lower() in ('nan', 'none', 'null'):
+                return Decimal(default)
+            return Decimal(val_str)
+        except (InvalidOperation, ValueError):
             return Decimal(default)
     
     def safe_int(val, default=0):
         """Convierte a entero de forma segura."""
         try:
-            if val is None or str(val).strip() == "" or str(val).strip().lower() == 'nan':
+            if val is None:
                 return default
-            return int(float(str(val).strip()))
-        except:
+            val_str = str(val).strip().replace(',', '').replace('""', '').strip('"')
+            if val_str == "" or val_str.lower() in ('nan', 'none', 'null'):
+                return default
+            return int(float(val_str))
+        except (ValueError, TypeError):
             return default
     
     def safe_bool(val, default=False):
         """Convierte a booleano de forma segura."""
         if val is None:
             return default
-        val_str = str(val).strip().lower()
+        val_str = str(val).strip().lower().replace('""', '').strip('"')
         if val_str in ('true', 'yes', 'si', 'sí', '1'):
             return True
         elif val_str in ('false', 'no', '0', ''):
@@ -82,19 +109,23 @@ def main():
         return default
     
     def parse_datetime(val):
-        """Parsea una fecha/hora de Shopify."""
-        if val is None or str(val).strip() == "":
+        """Parsea una fecha/hora de Shopify con múltiples formatos."""
+        if val is None:
             return None
         
-        val_str = str(val).strip()
+        val_str = str(val).strip().replace('""', '').strip('"')
+        if val_str == "" or val_str.lower() in ('nan', 'none', 'null'):
+            return None
         
+        # Formatos comunes de Shopify
         formats = [
-            "%Y-%m-%d %H:%M:%S %z",
-            "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%dT%H:%M:%S%z",
-            "%Y-%m-%dT%H:%M:%S",
-            "%d/%m/%Y %H:%M:%S",
-            "%d/%m/%Y",
+            "%Y-%m-%d %H:%M:%S %z",      # 2026-01-19 20:36:01 -0300
+            "%Y-%m-%d %H:%M:%S",          # 2026-01-19 20:36:01
+            "%Y-%m-%dT%H:%M:%S%z",        # ISO format con timezone
+            "%Y-%m-%dT%H:%M:%S",          # ISO sin timezone
+            "%d/%m/%Y %H:%M:%S",          # Formato DD/MM/YYYY
+            "%d/%m/%Y",                    # Solo fecha
+            "%Y-%m-%d",                    # Solo fecha ISO
         ]
         
         for fmt in formats:
@@ -104,8 +135,10 @@ def main():
                 continue
         
         return None
-    
-    # Mapeo de columnas CSV a campos del modelo
+
+    # =========================================================================
+    # MAPEO DE COLUMNAS CSV A CAMPOS DEL MODELO
+    # =========================================================================
     COLUMN_MAP = {
         'Name': 'order_name',
         'Email': 'email',
@@ -188,79 +221,68 @@ def main():
         'Payment References': 'payment_references',
     }
     
-    # Longitudes máximas por campo (basado en el modelo Django)
-    FIELD_MAX_LENGTHS = {
-        'order_name': 50,
-        'email': 200,
-        'financial_status': 30,
-        'fulfillment_status': 30,
-        'currency': 10,
-        'discount_code': 100,
-        'shipping_method': 200,
-        'lineitem_name': 300,
-        'lineitem_sku': 50,
-        'lineitem_fulfillment_status': 30,
-        'billing_name': 200,
-        'billing_street': 300,
-        'billing_address1': 300,
-        'billing_address2': 300,
-        'billing_company': 200,
-        'billing_city': 100,
-        'billing_zip': 20,
-        'billing_province': 100,
-        'billing_country': 10,
-        'billing_phone': 50,
-        'shipping_name': 200,
-        'shipping_street': 300,
-        'shipping_address1': 300,
-        'shipping_address2': 300,
-        'shipping_company': 200,
-        'shipping_city': 100,
-        'shipping_zip': 20,
-        'shipping_province': 100,
-        'shipping_country': 10,
-        'shipping_phone': 50,
-        'notes': 10000,
-        'note_attributes': 10000,
-        'payment_method': 100,
-        'payment_reference': 200,
-        'vendor': 100,
-        'employee': 100,
-        'location': 100,
-        'device_id': 100,
-        'tags': 500,
-        'risk_level': 20,
-        'source': 50,
-        'tax_1_name': 50,
-        'tax_2_name': 50,
-        'tax_3_name': 50,
-        'tax_4_name': 50,
-        'tax_5_name': 50,
-        'phone': 50,
-        'receipt_number': 50,
-        'billing_province_name': 100,
-        'shipping_province_name': 100,
-        'payment_id': 200,
-        'payment_terms_name': 100,
-        'payment_references': 10000,
-        'customer_name': 200,
-    }
-    
+    # Tipos de campos
     DATE_FIELDS = ['paid_at', 'fulfilled_at', 'created_at', 'cancelled_at', 'next_payment_due_at']
-    
     DECIMAL_FIELDS = [
         'subtotal', 'shipping_amount', 'taxes', 'total', 'discount_amount',
         'lineitem_price', 'lineitem_compare_at_price', 'lineitem_discount',
         'refunded_amount', 'outstanding_balance', 'duties',
         'tax_1_value', 'tax_2_value', 'tax_3_value', 'tax_4_value', 'tax_5_value'
     ]
-    
     INT_FIELDS = ['lineitem_quantity', 'shopify_id']
     BOOL_FIELDS = ['accepts_marketing', 'lineitem_requires_shipping', 'lineitem_taxable']
+
+    # =========================================================================
+    # FUNCIÓN PARA PARSEAR CSV CON FORMATO ESPECIAL DE SHOPIFY
+    # =========================================================================
     
-    # ============================================================
-    # MODO APPEND: Solo agregar registros nuevos
-    # ============================================================
+    def parse_shopify_csv(filepath):
+        """
+        Parser especial para CSVs de Shopify que pueden tener filas
+        envueltas en comillas dobles con escape interno.
+        """
+        rows = []
+        headers = []
+        
+        with open(filepath, 'r', encoding='utf-8-sig') as f:
+            content = f.read()
+        
+        lines = content.split('\n')
+        
+        for line_num, line in enumerate(lines):
+            line = line.strip()
+            if not line:
+                continue
+            
+            # Detectar si la línea está envuelta en comillas (formato especial)
+            if line.startswith('"') and line.endswith('"') and line.count('","') == 0:
+                # Quitar las comillas externas y procesar
+                line = line[1:-1]
+                # Las comillas dobles internas son escapes
+                line = line.replace('""', '\x00')  # Placeholder temporal
+            
+            # Parsear usando csv
+            try:
+                reader = csv.reader([line])
+                parsed_row = next(reader)
+                # Restaurar comillas escapadas
+                parsed_row = [cell.replace('\x00', '"') for cell in parsed_row]
+                
+                if line_num == 0:
+                    # Es el header - limpiar nombres de columnas
+                    headers = [h.strip().rstrip(';') for h in parsed_row]
+                else:
+                    if len(parsed_row) >= len(headers) * 0.5:  # Al menos 50% de campos
+                        rows.append(dict(zip(headers, parsed_row)))
+            except Exception as e:
+                continue  # Ignorar líneas mal formateadas
+        
+        return headers, rows
+
+    # =========================================================================
+    # OBTENER REGISTROS EXISTENTES PARA EVITAR DUPLICADOS
+    # =========================================================================
+    
     existing_keys = set()
     existing_records = ShopifyOrder.objects.values_list('order_name', 'lineitem_sku', 'lineitem_name')
     for order_name, sku, lineitem in existing_records:
@@ -269,85 +291,35 @@ def main():
     
     total_existentes_antes = ShopifyOrder.objects.count()
     
+    # =========================================================================
+    # PROCESAR EL ARCHIVO CSV
+    # =========================================================================
+    
     ordenes_creadas = 0
     ordenes_duplicadas = 0
     errores = []
     filas_procesadas = 0
     
     try:
-        import io
+        # Intentar primero con el parser especial
+        headers, rows = parse_shopify_csv(archivo_csv)
         
-        # Leer el archivo completo
-        with open(archivo_csv, 'r', encoding='utf-8-sig') as f:
-            content = f.read()
+        if not rows:
+            # Fallback a csv.DictReader estándar
+            with open(archivo_csv, 'r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                rows = list(reader)
+                headers = reader.fieldnames
         
-        # ============================================================
-        # PREPROCESAR: Limpiar el formato especial de Shopify
-        # El CSV tiene filas envueltas en comillas: "data,data,data";
-        # ============================================================
-        
-        lines = content.split('\n')
-        cleaned_lines = []
-        
-        # El header es la primera línea (sin comillas externas)
-        header_line = lines[0].strip()
-        if header_line.endswith(';'):
-            header_line = header_line[:-1]
-        cleaned_lines.append(header_line)
-        
-        # Procesar las filas de datos
-        current_row = ""
-        for line in lines[1:]:
-            line = line.rstrip('\r\n')
-            
-            # Si la línea empieza con " y contiene un número de orden (#B), es una nueva fila
-            if line.startswith('"#B') or line.startswith('#B'):
-                # Guardar la fila anterior si existe
-                if current_row:
-                    # Limpiar la fila
-                    row = current_row.strip()
-                    if row.endswith(';'):
-                        row = row[:-1]
-                    if row.startswith('"') and row.endswith('"'):
-                        row = row[1:-1]
-                    elif row.startswith('"'):
-                        row = row[1:]
-                    cleaned_lines.append(row)
-                
-                current_row = line
-            elif current_row:
-                # Es continuación de la fila anterior (multilinea en Note Attributes)
-                current_row += " " + line.strip()
-        
-        # No olvidar la última fila
-        if current_row:
-            row = current_row.strip()
-            if row.endswith(';'):
-                row = row[:-1]
-            if row.startswith('"') and row.endswith('"'):
-                row = row[1:-1]
-            elif row.startswith('"'):
-                row = row[1:]
-            cleaned_lines.append(row)
-        
-        # Crear CSV limpio
-        cleaned_content = '\n'.join(cleaned_lines)
-        
-        # Leer con csv.DictReader
-        reader = csv.DictReader(io.StringIO(cleaned_content))
-        
-        for row_num, row in enumerate(reader, start=2):
+        for row_num, row in enumerate(rows, start=2):
             filas_procesadas += 1
             
             try:
+                # Construir el diccionario de datos
                 data = {}
                 
                 for csv_col, model_field in COLUMN_MAP.items():
                     raw_value = row.get(csv_col, "")
-                    
-                    # Limpiar comillas dobles escapadas
-                    if raw_value:
-                        raw_value = raw_value.replace('""', '"')
                     
                     # Convertir según el tipo de campo
                     if model_field in DATE_FIELDS:
@@ -359,33 +331,44 @@ def main():
                     elif model_field in BOOL_FIELDS:
                         data[model_field] = safe_bool(raw_value)
                     else:
-                        # Obtener longitud máxima del campo
-                        max_len = FIELD_MAX_LENGTHS.get(model_field, 500)
-                        data[model_field] = safe_str(raw_value, max_length=max_len)
+                        # Todos los campos de texto - sin límite de longitud
+                        data[model_field] = safe_str(raw_value)
                 
-                # Extraer nombre del cliente
+                # Extraer nombre del cliente del billing_name si no hay customer_name
                 if not data.get('customer_name') and data.get('billing_name'):
                     data['customer_name'] = data['billing_name']
                 
-                # Verificar duplicados
+                # Verificar que hay datos mínimos
+                if not data.get('order_name'):
+                    continue  # Saltar filas sin número de orden
+                
+                # =========================================================
+                # VERIFICAR SI YA EXISTE (evitar duplicados)
+                # =========================================================
                 unique_key = f"{data.get('order_name', '')}|{data.get('lineitem_sku', '')}|{data.get('lineitem_name', '')}"
                 
                 if unique_key in existing_keys:
                     ordenes_duplicadas += 1
                     continue
                 
-                # Crear el registro
+                # Crear el registro (APPEND)
                 orden = ShopifyOrder(**data)
                 orden.save()
                 ordenes_creadas += 1
+                
+                # Agregar a las claves existentes
                 existing_keys.add(unique_key)
                 
             except Exception as e:
-                error_msg = f"Fila {row_num}: {str(e)[:100]}"
+                error_msg = f"Fila {row_num}: {str(e)[:150]}"
                 errores.append(error_msg)
                 continue
         
         total_existentes_despues = ShopifyOrder.objects.count()
+        
+        # =========================================================================
+        # CONSTRUIR MENSAJE DE RESULTADO
+        # =========================================================================
         
         msg = f"📊 <b>Resumen de Importación Shopify (APPEND)</b><br><br>"
         msg += f"📁 Archivo procesado: {os.path.basename(archivo_csv)}<br>"
@@ -405,11 +388,11 @@ def main():
         return msg
         
     except FileNotFoundError:
-        return f"Error: No se encontró el archivo {archivo_csv}"
+        return f"❌ Error: No se encontró el archivo {archivo_csv}"
     except Exception as e:
-        import traceback
-        return f"Error al procesar el archivo: {str(e)}<br><br>Detalle: {traceback.format_exc()[:500]}"
+        return f"❌ Error al procesar el archivo: {str(e)}"
 
 
+# Ejecutar desde línea de comando
 if __name__ == "__main__":
     print(main())

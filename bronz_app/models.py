@@ -1723,147 +1723,167 @@ class ResultadoMensualDetalle(models.Model):
 
 # ——————————————————————————————————————————————————————————————
 # Modelo: ShopifyOrder (Órdenes exportadas desde Shopify)
+# VERSIÓN DEFINITIVA - Todos los campos de texto sin límite (TextField)
 # ——————————————————————————————————————————————————————————————
 
 class ShopifyOrder(models.Model):
     """
-    Modelo para almacenar órdenes exportadas desde Shopify.
-    Contiene todos los campos del CSV de exportación de Shopify.
+    Modelo DEFINITIVO para almacenar órdenes exportadas desde Shopify.
+    Todos los campos de texto usan TextField (sin límite de longitud)
+    para evitar errores de "valor demasiado largo".
     """
     
-    # Identificación de la orden
-    order_name = models.CharField(max_length=50, verbose_name="Número de Orden", db_index=True)  # #B5041
+    # =========================================================================
+    # IDENTIFICACIÓN DE LA ORDEN
+    # =========================================================================
+    order_name = models.TextField(verbose_name="Número de Orden", db_index=True)  # #B5041
     shopify_id = models.BigIntegerField(verbose_name="ID Shopify", null=True, blank=True)
     
-    # Información del cliente
-    customer_name = models.CharField(max_length=200, verbose_name="Nombre Cliente", blank=True, default="")
-    email = models.EmailField(max_length=200, verbose_name="Email", blank=True, default="")
-    phone = models.CharField(max_length=50, verbose_name="Teléfono", blank=True, default="")
+    # =========================================================================
+    # INFORMACIÓN DEL CLIENTE
+    # =========================================================================
+    customer_name = models.TextField(verbose_name="Nombre Cliente", blank=True, default="")
+    email = models.TextField(verbose_name="Email", blank=True, default="")
+    phone = models.TextField(verbose_name="Teléfono", blank=True, default="")
     accepts_marketing = models.BooleanField(verbose_name="Acepta Marketing", default=False)
     
-    # Estados de la orden
-    FINANCIAL_STATUS_CHOICES = [
-        ('pending', 'Pendiente'),
-        ('paid', 'Pagado'),
-        ('partially_paid', 'Parcialmente Pagado'),
-        ('refunded', 'Reembolsado'),
-        ('voided', 'Anulado'),
-        ('', 'Sin estado'),
-    ]
-    financial_status = models.CharField(max_length=30, verbose_name="Estado Financiero", 
-                                        choices=FINANCIAL_STATUS_CHOICES, blank=True, default="")
+    # =========================================================================
+    # ESTADOS DE LA ORDEN
+    # =========================================================================
+    financial_status = models.TextField(verbose_name="Estado Financiero", blank=True, default="")
+    fulfillment_status = models.TextField(verbose_name="Estado de Cumplimiento", blank=True, default="")
     
-    FULFILLMENT_STATUS_CHOICES = [
-        ('fulfilled', 'Cumplido'),
-        ('unfulfilled', 'No Cumplido'),
-        ('partial', 'Parcial'),
-        ('', 'Sin estado'),
-    ]
-    fulfillment_status = models.CharField(max_length=30, verbose_name="Estado de Cumplimiento",
-                                          choices=FULFILLMENT_STATUS_CHOICES, blank=True, default="")
-    
-    # Fechas
+    # =========================================================================
+    # FECHAS
+    # =========================================================================
     created_at = models.DateTimeField(verbose_name="Fecha Creación", null=True, blank=True)
     paid_at = models.DateTimeField(verbose_name="Fecha de Pago", null=True, blank=True)
     fulfilled_at = models.DateTimeField(verbose_name="Fecha de Cumplimiento", null=True, blank=True)
     cancelled_at = models.DateTimeField(verbose_name="Fecha de Cancelación", null=True, blank=True)
     
-    # Montos
-    currency = models.CharField(max_length=10, verbose_name="Moneda", default="CLP")
+    # =========================================================================
+    # MONTOS
+    # =========================================================================
+    currency = models.TextField(verbose_name="Moneda", default="CLP")
     subtotal = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Subtotal", default=Decimal('0.00'))
     shipping_amount = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Envío", default=Decimal('0.00'))
     taxes = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuestos", default=Decimal('0.00'))
     total = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Total", default=Decimal('0.00'))
     
-    # Descuentos
-    discount_code = models.CharField(max_length=100, verbose_name="Código de Descuento", blank=True, default="")
+    # =========================================================================
+    # DESCUENTOS
+    # =========================================================================
+    discount_code = models.TextField(verbose_name="Código de Descuento", blank=True, default="")
     discount_amount = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Monto Descuento", default=Decimal('0.00'))
     
-    # Método de envío
-    shipping_method = models.CharField(max_length=200, verbose_name="Método de Envío", blank=True, default="")
+    # =========================================================================
+    # MÉTODO DE ENVÍO
+    # =========================================================================
+    shipping_method = models.TextField(verbose_name="Método de Envío", blank=True, default="")
     
-    # Line Item (producto)
+    # =========================================================================
+    # LINE ITEM (PRODUCTO)
+    # =========================================================================
     lineitem_quantity = models.IntegerField(verbose_name="Cantidad", default=0)
-    lineitem_name = models.CharField(max_length=300, verbose_name="Nombre Producto", blank=True, default="")
+    lineitem_name = models.TextField(verbose_name="Nombre Producto", blank=True, default="")
     lineitem_price = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Precio Producto", default=Decimal('0.00'))
-    lineitem_compare_at_price = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Precio Comparación", 
-                                                     null=True, blank=True)
-    lineitem_sku = models.CharField(max_length=50, verbose_name="SKU Producto", blank=True, default="")
+    lineitem_compare_at_price = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Precio Comparación", null=True, blank=True)
+    lineitem_sku = models.TextField(verbose_name="SKU Producto", blank=True, default="")
     lineitem_requires_shipping = models.BooleanField(verbose_name="Requiere Envío", default=True)
     lineitem_taxable = models.BooleanField(verbose_name="Gravable", default=False)
-    lineitem_fulfillment_status = models.CharField(max_length=30, verbose_name="Estado Cumplimiento Producto", blank=True, default="")
+    lineitem_fulfillment_status = models.TextField(verbose_name="Estado Cumplimiento Producto", blank=True, default="")
     lineitem_discount = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Descuento Línea", default=Decimal('0.00'))
     
-    # Dirección de Facturación
-    billing_name = models.CharField(max_length=200, verbose_name="Nombre Facturación", blank=True, default="")
-    billing_street = models.CharField(max_length=300, verbose_name="Calle Facturación", blank=True, default="")
-    billing_address1 = models.CharField(max_length=300, verbose_name="Dirección 1 Facturación", blank=True, default="")
-    billing_address2 = models.CharField(max_length=300, verbose_name="Dirección 2 Facturación", blank=True, default="")
-    billing_company = models.CharField(max_length=200, verbose_name="Empresa Facturación", blank=True, default="")
-    billing_city = models.CharField(max_length=100, verbose_name="Ciudad Facturación", blank=True, default="")
-    billing_zip = models.CharField(max_length=20, verbose_name="Código Postal Facturación", blank=True, default="")
-    billing_province = models.CharField(max_length=100, verbose_name="Provincia Facturación", blank=True, default="")
-    billing_province_name = models.CharField(max_length=100, verbose_name="Nombre Provincia Facturación", blank=True, default="")
-    billing_country = models.CharField(max_length=10, verbose_name="País Facturación", blank=True, default="")
-    billing_phone = models.CharField(max_length=50, verbose_name="Teléfono Facturación", blank=True, default="")
+    # =========================================================================
+    # DIRECCIÓN DE FACTURACIÓN
+    # =========================================================================
+    billing_name = models.TextField(verbose_name="Nombre Facturación", blank=True, default="")
+    billing_street = models.TextField(verbose_name="Calle Facturación", blank=True, default="")
+    billing_address1 = models.TextField(verbose_name="Dirección 1 Facturación", blank=True, default="")
+    billing_address2 = models.TextField(verbose_name="Dirección 2 Facturación", blank=True, default="")
+    billing_company = models.TextField(verbose_name="Empresa Facturación", blank=True, default="")
+    billing_city = models.TextField(verbose_name="Ciudad Facturación", blank=True, default="")
+    billing_zip = models.TextField(verbose_name="Código Postal Facturación", blank=True, default="")
+    billing_province = models.TextField(verbose_name="Provincia Facturación", blank=True, default="")
+    billing_province_name = models.TextField(verbose_name="Nombre Provincia Facturación", blank=True, default="")
+    billing_country = models.TextField(verbose_name="País Facturación", blank=True, default="")
+    billing_phone = models.TextField(verbose_name="Teléfono Facturación", blank=True, default="")
     
-    # Dirección de Envío
-    shipping_name = models.CharField(max_length=200, verbose_name="Nombre Envío", blank=True, default="")
-    shipping_street = models.CharField(max_length=300, verbose_name="Calle Envío", blank=True, default="")
-    shipping_address1 = models.CharField(max_length=300, verbose_name="Dirección 1 Envío", blank=True, default="")
-    shipping_address2 = models.CharField(max_length=300, verbose_name="Dirección 2 Envío", blank=True, default="")
-    shipping_company = models.CharField(max_length=200, verbose_name="Empresa Envío", blank=True, default="")
-    shipping_city = models.CharField(max_length=100, verbose_name="Ciudad Envío", blank=True, default="")
-    shipping_zip = models.CharField(max_length=20, verbose_name="Código Postal Envío", blank=True, default="")
-    shipping_province = models.CharField(max_length=100, verbose_name="Provincia Envío", blank=True, default="")
-    shipping_province_name = models.CharField(max_length=100, verbose_name="Nombre Provincia Envío", blank=True, default="")
-    shipping_country = models.CharField(max_length=10, verbose_name="País Envío", blank=True, default="")
-    shipping_phone = models.CharField(max_length=50, verbose_name="Teléfono Envío", blank=True, default="")
+    # =========================================================================
+    # DIRECCIÓN DE ENVÍO
+    # =========================================================================
+    shipping_name = models.TextField(verbose_name="Nombre Envío", blank=True, default="")
+    shipping_street = models.TextField(verbose_name="Calle Envío", blank=True, default="")
+    shipping_address1 = models.TextField(verbose_name="Dirección 1 Envío", blank=True, default="")
+    shipping_address2 = models.TextField(verbose_name="Dirección 2 Envío", blank=True, default="")
+    shipping_company = models.TextField(verbose_name="Empresa Envío", blank=True, default="")
+    shipping_city = models.TextField(verbose_name="Ciudad Envío", blank=True, default="")
+    shipping_zip = models.TextField(verbose_name="Código Postal Envío", blank=True, default="")
+    shipping_province = models.TextField(verbose_name="Provincia Envío", blank=True, default="")
+    shipping_province_name = models.TextField(verbose_name="Nombre Provincia Envío", blank=True, default="")
+    shipping_country = models.TextField(verbose_name="País Envío", blank=True, default="")
+    shipping_phone = models.TextField(verbose_name="Teléfono Envío", blank=True, default="")
     
-    # Información de pago
-    payment_method = models.CharField(max_length=100, verbose_name="Método de Pago", blank=True, default="")
-    payment_reference = models.CharField(max_length=200, verbose_name="Referencia de Pago", blank=True, default="")
-    payment_id = models.CharField(max_length=200, verbose_name="ID de Pago", blank=True, default="")
+    # =========================================================================
+    # INFORMACIÓN DE PAGO
+    # =========================================================================
+    payment_method = models.TextField(verbose_name="Método de Pago", blank=True, default="")
+    payment_reference = models.TextField(verbose_name="Referencia de Pago", blank=True, default="")
+    payment_id = models.TextField(verbose_name="ID de Pago", blank=True, default="")
     payment_references = models.TextField(verbose_name="Referencias de Pago", blank=True, default="")
     
-    # Reembolsos
+    # =========================================================================
+    # REEMBOLSOS
+    # =========================================================================
     refunded_amount = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Monto Reembolsado", default=Decimal('0.00'))
     outstanding_balance = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Saldo Pendiente", default=Decimal('0.00'))
     
-    # Otros campos
-    vendor = models.CharField(max_length=100, verbose_name="Vendedor", blank=True, default="")
-    tags = models.CharField(max_length=500, verbose_name="Etiquetas", blank=True, default="")
-    risk_level = models.CharField(max_length=20, verbose_name="Nivel de Riesgo", blank=True, default="")
-    source = models.CharField(max_length=50, verbose_name="Fuente", blank=True, default="")
+    # =========================================================================
+    # OTROS CAMPOS
+    # =========================================================================
+    vendor = models.TextField(verbose_name="Vendedor", blank=True, default="")
+    tags = models.TextField(verbose_name="Etiquetas", blank=True, default="")
+    risk_level = models.TextField(verbose_name="Nivel de Riesgo", blank=True, default="")
+    source = models.TextField(verbose_name="Fuente", blank=True, default="")
     notes = models.TextField(verbose_name="Notas", blank=True, default="")
-    note_attributes = models.TextField(verbose_name="Atributos de Notas", blank=True, default="")  # Sin límite - puede contener JSON largo
+    note_attributes = models.TextField(verbose_name="Atributos de Notas", blank=True, default="")
     
-    # Empleado y ubicación
-    employee = models.CharField(max_length=100, verbose_name="Empleado", blank=True, default="")
-    location = models.CharField(max_length=100, verbose_name="Ubicación", blank=True, default="")
-    device_id = models.CharField(max_length=100, verbose_name="ID de Dispositivo", blank=True, default="")
+    # =========================================================================
+    # EMPLEADO Y UBICACIÓN
+    # =========================================================================
+    employee = models.TextField(verbose_name="Empleado", blank=True, default="")
+    location = models.TextField(verbose_name="Ubicación", blank=True, default="")
+    device_id = models.TextField(verbose_name="ID de Dispositivo", blank=True, default="")
     
-    # Impuestos detallados
-    tax_1_name = models.CharField(max_length=50, verbose_name="Impuesto 1 Nombre", blank=True, default="")
+    # =========================================================================
+    # IMPUESTOS DETALLADOS
+    # =========================================================================
+    tax_1_name = models.TextField(verbose_name="Impuesto 1 Nombre", blank=True, default="")
     tax_1_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuesto 1 Valor", default=Decimal('0.00'))
-    tax_2_name = models.CharField(max_length=50, verbose_name="Impuesto 2 Nombre", blank=True, default="")
+    tax_2_name = models.TextField(verbose_name="Impuesto 2 Nombre", blank=True, default="")
     tax_2_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuesto 2 Valor", default=Decimal('0.00'))
-    tax_3_name = models.CharField(max_length=50, verbose_name="Impuesto 3 Nombre", blank=True, default="")
+    tax_3_name = models.TextField(verbose_name="Impuesto 3 Nombre", blank=True, default="")
     tax_3_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuesto 3 Valor", default=Decimal('0.00'))
-    tax_4_name = models.CharField(max_length=50, verbose_name="Impuesto 4 Nombre", blank=True, default="")
+    tax_4_name = models.TextField(verbose_name="Impuesto 4 Nombre", blank=True, default="")
     tax_4_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuesto 4 Valor", default=Decimal('0.00'))
-    tax_5_name = models.CharField(max_length=50, verbose_name="Impuesto 5 Nombre", blank=True, default="")
+    tax_5_name = models.TextField(verbose_name="Impuesto 5 Nombre", blank=True, default="")
     tax_5_value = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Impuesto 5 Valor", default=Decimal('0.00'))
     
-    # Términos de pago
-    payment_terms_name = models.CharField(max_length=100, verbose_name="Nombre Términos de Pago", blank=True, default="")
+    # =========================================================================
+    # TÉRMINOS DE PAGO
+    # =========================================================================
+    payment_terms_name = models.TextField(verbose_name="Nombre Términos de Pago", blank=True, default="")
     next_payment_due_at = models.DateTimeField(verbose_name="Próximo Pago", null=True, blank=True)
     
-    # Otros
-    receipt_number = models.CharField(max_length=50, verbose_name="Número de Recibo", blank=True, default="")
+    # =========================================================================
+    # OTROS
+    # =========================================================================
+    receipt_number = models.TextField(verbose_name="Número de Recibo", blank=True, default="")
     duties = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Aranceles", default=Decimal('0.00'))
     
-    # Metadatos
+    # =========================================================================
+    # METADATOS
+    # =========================================================================
     imported_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Importación")
     
     class Meta:
