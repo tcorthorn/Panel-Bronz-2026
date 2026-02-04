@@ -1,0 +1,596 @@
+{% extends "bronz_app/base.html" %}
+{% block title %}Dashboard Shopify - Bronz{% endblock %}
+
+{% block content %}
+<style>
+    .kpi-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .kpi-card.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .kpi-card.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .kpi-card.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .kpi-card.purple { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+    .kpi-card.teal { background: linear-gradient(135deg, #2af598 0%, #009efd 100%); }
+    
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+    }
+    .kpi-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .kpi-icon {
+        font-size: 2.5rem;
+        opacity: 0.3;
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+    }
+    
+    .chart-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
+    }
+    .chart-card h5 {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .table-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
+    }
+    .table-card h5 {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .table-modern {
+        font-size: 0.85rem;
+    }
+    .table-modern th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .table-modern td {
+        vertical-align: middle;
+    }
+    
+    .badge-status {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+    }
+    .badge-paid { background-color: #28a745; }
+    .badge-pending { background-color: #ffc107; color: #000; }
+    .badge-fulfilled { background-color: #17a2b8; }
+    .badge-unfulfilled { background-color: #6c757d; }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #343a40;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #667eea;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    .no-data i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 m-0">📊 Dashboard Ventas Shopify</h1>
+            <small class="text-muted">Análisis completo de tu tienda</small>
+        </div>
+        <a href="{% url 'home' %}" class="btn btn-secondary">← Volver al Home</a>
+    </div>
+    
+    {% if not data %}
+    <div class="no-data">
+        <i class="bi bi-inbox"></i>
+        <h4>No hay datos de Shopify</h4>
+        <p>Importa órdenes desde la sección "Importar Datos" para ver el dashboard.</p>
+        <a href="{% url 'importar_datos' %}" class="btn btn-primary mt-3">Ir a Importar Datos</a>
+    </div>
+    {% else %}
+    
+    <!-- KPIs Principales -->
+    <div class="row">
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card position-relative">
+                <div class="kpi-value">${{ data.total_revenue|floatformat:0 }}</div>
+                <div class="kpi-label">Ingresos Totales</div>
+                <span class="kpi-icon">💰</span>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card green position-relative">
+                <div class="kpi-value">{{ data.total_orders }}</div>
+                <div class="kpi-label">Órdenes Totales</div>
+                <span class="kpi-icon">🛒</span>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card orange position-relative">
+                <div class="kpi-value">{{ data.total_items }}</div>
+                <div class="kpi-label">Productos Vendidos</div>
+                <span class="kpi-icon">📦</span>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card blue position-relative">
+                <div class="kpi-value">${{ data.avg_order_value|floatformat:0 }}</div>
+                <div class="kpi-label">Ticket Promedio</div>
+                <span class="kpi-icon">🎯</span>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card purple position-relative">
+                <div class="kpi-value">{{ data.unique_customers }}</div>
+                <div class="kpi-label">Clientes Únicos</div>
+                <span class="kpi-icon">👥</span>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6">
+            <div class="kpi-card teal position-relative">
+                <div class="kpi-value">{{ data.repeat_rate }}%</div>
+                <div class="kpi-label">Tasa Recompra</div>
+                <span class="kpi-icon">🔄</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos de Ventas -->
+    <h4 class="section-title">📈 Análisis de Ventas</h4>
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <h5>💵 Ventas por Mes</h5>
+                <canvas id="salesByMonthChart" height="100"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <h5>💳 Métodos de Pago</h5>
+                <canvas id="paymentMethodsChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>📅 Ventas Últimos 30 Días</h5>
+                <canvas id="salesByDayChart" height="150"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>⏰ Órdenes por Hora del Día</h5>
+                <canvas id="salesByHourChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Productos y Geografía -->
+    <h4 class="section-title">🏆 Productos y Geografía</h4>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>🥇 Top 10 Productos</h5>
+                <canvas id="topProductsChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>🏙️ Ventas por Ciudad</h5>
+                <canvas id="salesByCityChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>🗺️ Ventas por Región</h5>
+                <canvas id="salesByRegionChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="chart-card">
+                <h5>💰 Estado Financiero</h5>
+                <canvas id="financialStatusChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="chart-card">
+                <h5>📦 Estado de Envío</h5>
+                <canvas id="fulfillmentStatusChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tablas -->
+    <h4 class="section-title">📋 Tablas de Datos</h4>
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>🌟 Top 10 Clientes</h5>
+                <div class="table-responsive">
+                    <table class="table table-modern table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Cliente</th>
+                                <th>Órdenes</th>
+                                <th>Total Gastado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in data.top_customers %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <strong>{{ customer.billing_name|default:"Sin nombre" }}</strong><br>
+                                    <small class="text-muted">{{ customer.email }}</small>
+                                </td>
+                                <td>{{ customer.orders_count }}</td>
+                                <td><strong>${{ customer.total_spent|floatformat:0 }}</strong></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">Sin datos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>🕐 Últimas 15 Órdenes</h5>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-modern table-hover">
+                        <thead>
+                            <tr>
+                                <th>Orden</th>
+                                <th>Cliente</th>
+                                <th>Ciudad</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in data.recent_orders %}
+                            <tr>
+                                <td><strong>{{ order.order_name }}</strong></td>
+                                <td>{{ order.customer_name|default:order.email|truncatechars:20 }}</td>
+                                <td>{{ order.shipping_city|default:"-" }}</td>
+                                <td>${{ order.total|floatformat:0 }}</td>
+                                <td>
+                                    {% if order.financial_status == 'paid' %}
+                                        <span class="badge badge-status badge-paid">Pagado</span>
+                                    {% else %}
+                                        <span class="badge badge-status badge-pending">{{ order.financial_status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">Sin datos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>🚚 Métodos de Envío</h5>
+                <div class="table-responsive">
+                    <table class="table table-modern table-hover">
+                        <thead>
+                            <tr>
+                                <th>Método</th>
+                                <th>Órdenes</th>
+                                <th>Ingresos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for method in data.shipping_methods %}
+                            <tr>
+                                <td>{{ method.shipping_method|truncatechars:40 }}</td>
+                                <td>{{ method.orders }}</td>
+                                <td>${{ method.total|floatformat:0 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>🏷️ Códigos de Descuento Usados</h5>
+                <div class="table-responsive">
+                    <table class="table table-modern table-hover">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Usos</th>
+                                <th>Descuento Total</th>
+                                <th>Ingresos Generados</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for discount in data.discount_usage %}
+                            <tr>
+                                <td><code>{{ discount.discount_code }}</code></td>
+                                <td>{{ discount.times_used }}</td>
+                                <td>${{ discount.total_discount|floatformat:0 }}</td>
+                                <td>${{ discount.revenue_generated|floatformat:0 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">No se usaron descuentos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+{% if data %}
+<script>
+// Colores para gráficos
+const colors = {
+    primary: 'rgba(102, 126, 234, 0.8)',
+    primaryBorder: 'rgba(102, 126, 234, 1)',
+    success: 'rgba(40, 167, 69, 0.8)',
+    successBorder: 'rgba(40, 167, 69, 1)',
+    info: 'rgba(23, 162, 184, 0.8)',
+    warning: 'rgba(255, 193, 7, 0.8)',
+    danger: 'rgba(220, 53, 69, 0.8)',
+    palette: [
+        'rgba(102, 126, 234, 0.8)',
+        'rgba(17, 153, 142, 0.8)',
+        'rgba(240, 147, 251, 0.8)',
+        'rgba(79, 172, 254, 0.8)',
+        'rgba(161, 140, 209, 0.8)',
+        'rgba(42, 245, 152, 0.8)',
+        'rgba(255, 193, 7, 0.8)',
+        'rgba(220, 53, 69, 0.8)',
+        'rgba(108, 117, 125, 0.8)',
+        'rgba(52, 58, 64, 0.8)'
+    ]
+};
+
+// 1. Ventas por Mes
+new Chart(document.getElementById('salesByMonthChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.months_labels|safe }},
+        datasets: [{
+            label: 'Ingresos ($)',
+            data: {{ data.months_revenue|safe }},
+            backgroundColor: colors.primary,
+            borderColor: colors.primaryBorder,
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 2. Métodos de Pago (Dona)
+new Chart(document.getElementById('paymentMethodsChart'), {
+    type: 'doughnut',
+    data: {
+        labels: {{ data.payment_labels|safe }},
+        datasets: [{
+            data: {{ data.payment_totals|safe }},
+            backgroundColor: colors.palette
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+        }
+    }
+});
+
+// 3. Ventas últimos 30 días
+new Chart(document.getElementById('salesByDayChart'), {
+    type: 'line',
+    data: {
+        labels: {{ data.days_labels|safe }},
+        datasets: [{
+            label: 'Ingresos ($)',
+            data: {{ data.days_revenue|safe }},
+            borderColor: colors.successBorder,
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: { callback: function(v) { return '$' + v.toLocaleString(); } }
+            }
+        }
+    }
+});
+
+// 4. Órdenes por hora
+new Chart(document.getElementById('salesByHourChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.hours_labels|safe }},
+        datasets: [{
+            label: 'Órdenes',
+            data: {{ data.hours_orders|safe }},
+            backgroundColor: colors.info
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// 5. Top Productos
+new Chart(document.getElementById('topProductsChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.products_labels|safe }},
+        datasets: [{
+            label: 'Unidades vendidas',
+            data: {{ data.products_quantities|safe }},
+            backgroundColor: colors.palette
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } }
+    }
+});
+
+// 6. Ventas por Ciudad
+new Chart(document.getElementById('salesByCityChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.cities_labels|safe }},
+        datasets: [{
+            label: 'Ingresos ($)',
+            data: {{ data.cities_revenue|safe }},
+            backgroundColor: colors.palette
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { callback: function(v) { return '$' + v.toLocaleString(); } } }
+        }
+    }
+});
+
+// 7. Ventas por Región
+new Chart(document.getElementById('salesByRegionChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.regions_labels|safe }},
+        datasets: [{
+            label: 'Ingresos ($)',
+            data: {{ data.regions_revenue|safe }},
+            backgroundColor: colors.palette
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { callback: function(v) { return '$' + v.toLocaleString(); } } }
+        }
+    }
+});
+
+// 8. Estado Financiero
+new Chart(document.getElementById('financialStatusChart'), {
+    type: 'pie',
+    data: {
+        labels: {{ data.fin_status_labels|safe }},
+        datasets: [{
+            data: {{ data.fin_status_counts|safe }},
+            backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(255, 193, 7, 0.8)', 'rgba(220, 53, 69, 0.8)', 'rgba(108, 117, 125, 0.8)']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+    }
+});
+
+// 9. Estado de Cumplimiento
+new Chart(document.getElementById('fulfillmentStatusChart'), {
+    type: 'pie',
+    data: {
+        labels: {{ data.fulf_status_labels|safe }},
+        datasets: [{
+            data: {{ data.fulf_status_counts|safe }},
+            backgroundColor: ['rgba(23, 162, 184, 0.8)', 'rgba(108, 117, 125, 0.8)', 'rgba(255, 193, 7, 0.8)', 'rgba(220, 53, 69, 0.8)']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+    }
+});
+</script>
+{% endif %}
+
+{% endblock %}

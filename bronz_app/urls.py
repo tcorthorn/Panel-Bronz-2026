@@ -19,6 +19,7 @@ urlpatterns = [
     path('importar-envios/', views.import_envios, name='import_envios'),
     path('importar-otros-gastos/', views.import_otros_gastos, name='import_otros_gastos'),
     path('importar-shopify-orders/', views.import_shopify_orders, name='import_shopify_orders'),
+    path('shopify-dashboard/', views.shopify_dashboard, name='shopify_dashboard'),
 
     # Procesar datos
     path('procesar-union-credito/', views.procesar_union_credito, name='procesar_union_credito'),

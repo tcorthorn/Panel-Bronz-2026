@@ -395,6 +395,16 @@ def import_shopify_orders(request):
         messages.error(request, f"Error al importar Órdenes Shopify: {str(e)}")
     return redirect('home')
 
+# ——————————————————————————————————————————————————————————————
+# DASHBOARD SHOPIFY
+# ——————————————————————————————————————————————————————————————
+from bronz_app.shopify_dashboard import get_shopify_dashboard_data
+
+def shopify_dashboard(request):
+    """Dashboard de análisis de ventas Shopify."""
+    data = get_shopify_dashboard_data()
+    return render(request, 'bronz_app/shopify_dashboard.html', {'data': data})
+
 @login_required
 def procesar_todo(request):
     if request.method == 'POST':
