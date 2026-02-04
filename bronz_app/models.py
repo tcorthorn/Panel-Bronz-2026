@@ -1802,7 +1802,7 @@ class ShopifyOrder(models.Model):
     billing_company = models.CharField(max_length=200, verbose_name="Empresa Facturación", blank=True, default="")
     billing_city = models.CharField(max_length=100, verbose_name="Ciudad Facturación", blank=True, default="")
     billing_zip = models.CharField(max_length=20, verbose_name="Código Postal Facturación", blank=True, default="")
-    billing_province = models.CharField(max_length=50, verbose_name="Provincia Facturación", blank=True, default="")
+    billing_province = models.CharField(max_length=100, verbose_name="Provincia Facturación", blank=True, default="")
     billing_province_name = models.CharField(max_length=100, verbose_name="Nombre Provincia Facturación", blank=True, default="")
     billing_country = models.CharField(max_length=10, verbose_name="País Facturación", blank=True, default="")
     billing_phone = models.CharField(max_length=50, verbose_name="Teléfono Facturación", blank=True, default="")
@@ -1815,7 +1815,7 @@ class ShopifyOrder(models.Model):
     shipping_company = models.CharField(max_length=200, verbose_name="Empresa Envío", blank=True, default="")
     shipping_city = models.CharField(max_length=100, verbose_name="Ciudad Envío", blank=True, default="")
     shipping_zip = models.CharField(max_length=20, verbose_name="Código Postal Envío", blank=True, default="")
-    shipping_province = models.CharField(max_length=50, verbose_name="Provincia Envío", blank=True, default="")
+    shipping_province = models.CharField(max_length=100, verbose_name="Provincia Envío", blank=True, default="")
     shipping_province_name = models.CharField(max_length=100, verbose_name="Nombre Provincia Envío", blank=True, default="")
     shipping_country = models.CharField(max_length=10, verbose_name="País Envío", blank=True, default="")
     shipping_phone = models.CharField(max_length=50, verbose_name="Teléfono Envío", blank=True, default="")
@@ -1836,7 +1836,7 @@ class ShopifyOrder(models.Model):
     risk_level = models.CharField(max_length=20, verbose_name="Nivel de Riesgo", blank=True, default="")
     source = models.CharField(max_length=50, verbose_name="Fuente", blank=True, default="")
     notes = models.TextField(verbose_name="Notas", blank=True, default="")
-    note_attributes = models.TextField(verbose_name="Atributos de Notas", blank=True, default="")
+    note_attributes = models.TextField(verbose_name="Atributos de Notas", blank=True, default="")  # Sin límite - puede contener JSON largo
     
     # Empleado y ubicación
     employee = models.CharField(max_length=100, verbose_name="Empleado", blank=True, default="")
