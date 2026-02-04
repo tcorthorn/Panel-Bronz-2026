@@ -226,16 +226,24 @@ def main():
     
     try:
         with open(archivo_csv, 'r', encoding='utf-8-sig') as f:
-            # Detectar el delimitador
-            sample = f.read(4096)
+            # Leer primera línea para detectar delimitador manualmente
+            first_line = f.readline()
             f.seek(0)
             
-            try:
-                dialect = csv.Sniffer().sniff(sample, delimiters=',;\t')
-            except:
-                dialect = csv.excel
+            # Detectar delimitador contando ocurrencias en la primera línea
+            comma_count = first_line.count(',')
+            semicolon_count = first_line.count(';')
+            tab_count = first_line.count('\t')
             
-            reader = csv.DictReader(f, dialect=dialect)
+            # Usar el delimitador más frecuente
+            if semicolon_count > comma_count and semicolon_count > tab_count:
+                delimiter = ';'
+            elif tab_count > comma_count and tab_count > semicolon_count:
+                delimiter = '\t'
+            else:
+                delimiter = ','
+            
+            reader = csv.DictReader(f, delimiter=delimiter)
             
             for row_num, row in enumerate(reader, start=2):
                 filas_procesadas += 1
