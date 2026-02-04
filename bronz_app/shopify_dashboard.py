@@ -302,6 +302,114 @@ def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
     ).order_by('-times_used')[:10]
     
     # ========================================
+    # 14. ANÁLISIS DE RENTABILIDAD (NETO DE IVA 19%)
+    # ========================================
+    IVA = Decimal('1.19')  # Factor IVA Chile
+    
+    # Crear diccionario de SKU -> costo desde Catálogo
+    catalogo_costos = {}
+    for cat in Catalogo.objects.all():
+        catalogo_costos[cat.sku.upper()] = cat.costo_promedio_neto
+    
+    # Calcular rentabilidad por producto
+    rentabilidad_productos = []
+    total_ventas_netas = Decimal('0')
+    total_costo = Decimal('0')
+    total_utilidad = Decimal('0')
+    
+    # Agrupar ventas por SKU
+    ventas_por_sku = orders.exclude(lineitem_sku='').values('lineitem_sku').annotate(
+        cantidad=Sum('lineitem_quantity'),
+        venta_bruta=Sum(F('lineitem_price') * F('lineitem_quantity'))
+    ).order_by('-venta_bruta')
+    
+    for item in ventas_por_sku:
+        sku = item['lineitem_sku'].upper() if item['lineitem_sku'] else ''
+        cantidad = item['cantidad'] or 0
+        venta_bruta = Decimal(str(item['venta_bruta'] or 0))
+        
+        # Calcular venta neta (sin IVA)
+        venta_neta = venta_bruta / IVA
+        
+        # Obtener costo del catálogo
+        costo_unitario = catalogo_costos.get(sku, Decimal('0'))
+        costo_total = costo_unitario * cantidad
+        
+        # Calcular utilidad
+        utilidad = venta_neta - costo_total
+        margen = (utilidad / venta_neta * 100) if venta_neta > 0 else Decimal('0')
+        
+        # Obtener nombre del producto
+        nombre_producto = catalogo_dict.get(sku, sku)
+        
+        rentabilidad_productos.append({
+            'sku': sku,
+            'producto': nombre_producto,
+            'cantidad': cantidad,
+            'venta_bruta': float(venta_bruta),
+            'venta_neta': float(venta_neta),
+            'costo_unitario': float(costo_unitario),
+            'costo_total': float(costo_total),
+            'utilidad': float(utilidad),
+            'margen': float(margen),
+        })
+        
+        total_ventas_netas += venta_neta
+        total_costo += costo_total
+        total_utilidad += utilidad
+    
+    # Ordenar por utilidad (más rentables primero)
+    rentabilidad_por_utilidad = sorted(rentabilidad_productos, key=lambda x: x['utilidad'], reverse=True)[:10]
+    
+    # Ordenar por margen (mejor margen primero)
+    rentabilidad_por_margen = sorted(rentabilidad_productos, key=lambda x: x['margen'], reverse=True)[:10]
+    
+    # KPIs de Rentabilidad
+    margen_global = (total_utilidad / total_ventas_netas * 100) if total_ventas_netas > 0 else Decimal('0')
+    
+    # Datos para gráfico de rentabilidad
+    rent_labels = [p['producto'][:20] + '...' if len(p['producto']) > 20 else p['producto'] for p in rentabilidad_por_utilidad]
+    rent_utilidades = [p['utilidad'] for p in rentabilidad_por_utilidad]
+    rent_margenes = [p['margen'] for p in rentabilidad_por_margen]
+    rent_margen_labels = [p['producto'][:20] + '...' if len(p['producto']) > 20 else p['producto'] for p in rentabilidad_por_margen]
+    
+    # Comparativa Costos vs Ventas por mes
+    ventas_costos_mes = []
+    for item in sales_by_month:
+        if item['month']:
+            mes_label = item['month'].strftime('%b %Y')
+            venta_bruta_mes = Decimal(str(item['total'] or 0))
+            venta_neta_mes = venta_bruta_mes / IVA
+            
+            # Calcular costo del mes (aproximado basado en productos vendidos ese mes)
+            ventas_mes = orders.filter(
+                created_at__year=item['month'].year,
+                created_at__month=item['month'].month
+            ).exclude(lineitem_sku='').values('lineitem_sku').annotate(
+                cantidad=Sum('lineitem_quantity')
+            )
+            
+            costo_mes = Decimal('0')
+            for v in ventas_mes:
+                sku = v['lineitem_sku'].upper() if v['lineitem_sku'] else ''
+                costo_unit = catalogo_costos.get(sku, Decimal('0'))
+                costo_mes += costo_unit * (v['cantidad'] or 0)
+            
+            utilidad_mes = venta_neta_mes - costo_mes
+            
+            ventas_costos_mes.append({
+                'mes': mes_label,
+                'venta_neta': float(venta_neta_mes),
+                'costo': float(costo_mes),
+                'utilidad': float(utilidad_mes),
+            })
+    
+    costos_mes_labels = [x['mes'] for x in ventas_costos_mes]
+    costos_mes_ventas = [x['venta_neta'] for x in ventas_costos_mes]
+    costos_mes_costos = [x['costo'] for x in ventas_costos_mes]
+    costos_mes_utilidades = [x['utilidad'] for x in ventas_costos_mes]
+    
+    # ========================================
     # COMPILAR DATOS
     # ========================================
     return {
@@ -360,4 +468,26 @@ def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
         'fecha_hasta': fecha_hasta,
         'min_date': date_range['min_date'],
         'max_date': date_range['max_date'],
+        
+        # ========== RENTABILIDAD (NETO IVA 19%) ==========
+        'total_ventas_netas': float(total_ventas_netas),
+        'total_costo': float(total_costo),
+        'total_utilidad': float(total_utilidad),
+        'margen_global': float(margen_global),
+        
+        # Tablas de rentabilidad
+        'rentabilidad_por_utilidad': rentabilidad_por_utilidad,
+        'rentabilidad_por_margen': rentabilidad_por_margen,
+        
+        # Gráficos de rentabilidad
+        'rent_labels': rent_labels,
+        'rent_utilidades': rent_utilidades,
+        'rent_margen_labels': rent_margen_labels,
+        'rent_margenes': rent_margenes,
+        
+        # Comparativa mensual Costos vs Ventas
+        'costos_mes_labels': costos_mes_labels,
+        'costos_mes_ventas': costos_mes_ventas,
+        'costos_mes_costos': costos_mes_costos,
+        'costos_mes_utilidades': costos_mes_utilidades,
     }

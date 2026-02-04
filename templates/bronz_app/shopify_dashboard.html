@@ -238,6 +238,130 @@
         </div>
     </div>
     
+    <!-- KPIs de Rentabilidad (Neto IVA) -->
+    <h4 class="section-title">💰 Rentabilidad (Neto de IVA 19%)</h4>
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="kpi-card position-relative" style="background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);">
+                <div class="kpi-value">${{ data.total_ventas_netas|floatformat:0 }}</div>
+                <div class="kpi-label">Ventas Netas (sin IVA)</div>
+                <span class="kpi-icon">📊</span>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="kpi-card position-relative" style="background: linear-gradient(135deg, #e17055 0%, #d63031 100%);">
+                <div class="kpi-value">${{ data.total_costo|floatformat:0 }}</div>
+                <div class="kpi-label">Costo Total</div>
+                <span class="kpi-icon">📦</span>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="kpi-card position-relative" style="background: linear-gradient(135deg, #fdcb6e 0%, #f39c12 100%);">
+                <div class="kpi-value">${{ data.total_utilidad|floatformat:0 }}</div>
+                <div class="kpi-label">Utilidad Bruta</div>
+                <span class="kpi-icon">💵</span>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="kpi-card position-relative" style="background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);">
+                <div class="kpi-value">{{ data.margen_global|floatformat:1 }}%</div>
+                <div class="kpi-label">Margen Global</div>
+                <span class="kpi-icon">📈</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos de Rentabilidad -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>📊 Ventas Netas vs Costos vs Utilidad por Mes</h5>
+                <canvas id="costosVsVentasChart" height="150"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h5>🏆 Top 10 Productos por Utilidad</h5>
+                <canvas id="utilidadProductosChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>💰 Productos Más Rentables (por Utilidad)</h5>
+                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-modern table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Venta Neta</th>
+                                <th class="text-end">Costo</th>
+                                <th class="text-end">Utilidad</th>
+                                <th class="text-end">Margen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in data.rentabilidad_por_utilidad %}
+                            <tr>
+                                <td><small>{{ p.producto|truncatechars:25 }}</small><br><code class="small">{{ p.sku }}</code></td>
+                                <td class="text-end">{{ p.cantidad }}</td>
+                                <td class="text-end">${{ p.venta_neta|floatformat:0 }}</td>
+                                <td class="text-end text-danger">${{ p.costo_total|floatformat:0 }}</td>
+                                <td class="text-end fw-bold {% if p.utilidad > 0 %}text-success{% else %}text-danger{% endif %}">${{ p.utilidad|floatformat:0 }}</td>
+                                <td class="text-end">
+                                    <span class="badge {% if p.margen >= 30 %}bg-success{% elif p.margen >= 15 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ p.margen|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center text-muted">Sin datos de costos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="table-card">
+                <h5>📈 Productos con Mejor Margen (%)</h5>
+                <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table table-modern table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Costo Unit.</th>
+                                <th class="text-end">Utilidad</th>
+                                <th class="text-end">Margen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in data.rentabilidad_por_margen %}
+                            <tr>
+                                <td><small>{{ p.producto|truncatechars:25 }}</small><br><code class="small">{{ p.sku }}</code></td>
+                                <td class="text-end">{{ p.cantidad }}</td>
+                                <td class="text-end">${{ p.costo_unitario|floatformat:0 }}</td>
+                                <td class="text-end fw-bold {% if p.utilidad > 0 %}text-success{% else %}text-danger{% endif %}">${{ p.utilidad|floatformat:0 }}</td>
+                                <td class="text-end">
+                                    <span class="badge {% if p.margen >= 30 %}bg-success{% elif p.margen >= 15 %}bg-warning text-dark{% else %}bg-danger{% endif %}" style="font-size: 0.9em;">
+                                        {{ p.margen|floatformat:1 }}%
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">Sin datos de costos</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Gráficos de Ventas -->
     <h4 class="section-title">📈 Análisis de Ventas</h4>
     <div class="row">
@@ -447,7 +571,7 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-{% if data %}
+{% if data and not data.no_data_in_range %}
 <script>
 // Colores para gráficos
 const colors = {
@@ -654,6 +778,86 @@ new Chart(document.getElementById('fulfillmentStatusChart'), {
     options: {
         responsive: true,
         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } }
+    }
+});
+
+// ============================================================
+// GRÁFICOS DE RENTABILIDAD (NETO IVA 19%)
+// ============================================================
+
+// 10. Ventas Netas vs Costos vs Utilidad por Mes
+new Chart(document.getElementById('costosVsVentasChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.costos_mes_labels|safe }},
+        datasets: [
+            {
+                label: 'Ventas Netas',
+                data: {{ data.costos_mes_ventas|safe }},
+                backgroundColor: 'rgba(0, 184, 148, 0.8)',
+                borderColor: 'rgba(0, 184, 148, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Costos',
+                data: {{ data.costos_mes_costos|safe }},
+                backgroundColor: 'rgba(225, 112, 85, 0.8)',
+                borderColor: 'rgba(225, 112, 85, 1)',
+                borderWidth: 1
+            },
+            {
+                label: 'Utilidad',
+                data: {{ data.costos_mes_utilidades|safe }},
+                backgroundColor: 'rgba(253, 203, 110, 0.8)',
+                borderColor: 'rgba(253, 203, 110, 1)',
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'top' }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 11. Top 10 Productos por Utilidad
+new Chart(document.getElementById('utilidadProductosChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ data.rent_labels|safe }},
+        datasets: [{
+            label: 'Utilidad ($)',
+            data: {{ data.rent_utilidades|safe }},
+            backgroundColor: {{ data.rent_utilidades|safe }}.map(v => v >= 0 ? 'rgba(0, 184, 148, 0.8)' : 'rgba(220, 53, 69, 0.8)'),
+            borderColor: {{ data.rent_utilidades|safe }}.map(v => v >= 0 ? 'rgba(0, 184, 148, 1)' : 'rgba(220, 53, 69, 1)'),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: {
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value.toLocaleString();
+                    }
+                }
+            }
+        }
     }
 });
 </script>
