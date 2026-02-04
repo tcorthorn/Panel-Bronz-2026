@@ -342,9 +342,9 @@
       <form action="{% url 'importar_datos' %}" method="get">
         <button class="btn btn-admin info w-100">🔎 Ir a Base de Datos</button>
       </form>
-      <a href="{% url 'shopify_dashboard' %}" class="btn btn-admin" style="background: linear-gradient(135deg, #95bf46 0%, #7ab03c 100%);">
-        📊 Dashboard Shopify
-      </a> 
+      <form action="{% url 'shopify_dashboard' %}" method="get">
+        <button class="btn btn-admin w-100">📊 Dashboard Shopify</button>
+      </form> 
 
     <!-- VALIDAR CUENTA CONTABLE INGRESADA -->
       <form action="{% url 'validar_plan_cuentas' %}" method="get">
