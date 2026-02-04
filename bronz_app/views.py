@@ -401,9 +401,36 @@ def import_shopify_orders(request):
 from bronz_app.shopify_dashboard import get_shopify_dashboard_data
 
 def shopify_dashboard(request):
-    """Dashboard de análisis de ventas Shopify."""
-    data = get_shopify_dashboard_data()
-    return render(request, 'bronz_app/shopify_dashboard.html', {'data': data})
+    """Dashboard de análisis de ventas Shopify con filtro de fechas."""
+    from datetime import datetime
+    
+    # Obtener fechas del request (GET parameters)
+    fecha_desde_str = request.GET.get('fecha_desde', '')
+    fecha_hasta_str = request.GET.get('fecha_hasta', '')
+    
+    fecha_desde = None
+    fecha_hasta = None
+    
+    # Parsear fechas si se proporcionan
+    if fecha_desde_str:
+        try:
+            fecha_desde = datetime.strptime(fecha_desde_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    
+    if fecha_hasta_str:
+        try:
+            fecha_hasta = datetime.strptime(fecha_hasta_str, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+    
+    data = get_shopify_dashboard_data(fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
+    
+    return render(request, 'bronz_app/shopify_dashboard.html', {
+        'data': data,
+        'fecha_desde': fecha_desde_str,
+        'fecha_hasta': fecha_hasta_str,
+    })
 
 @login_required
 def procesar_todo(request):

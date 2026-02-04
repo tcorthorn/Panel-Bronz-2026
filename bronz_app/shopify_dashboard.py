@@ -10,16 +10,40 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 
-def get_shopify_dashboard_data():
+def get_shopify_dashboard_data(fecha_desde=None, fecha_hasta=None):
     """
     Genera todos los datos necesarios para el dashboard de Shopify.
+    Permite filtrar por rango de fechas.
     """
     from bronz_app.models import ShopifyOrder
+    from django.db.models import Min, Max
     
-    orders = ShopifyOrder.objects.all()
+    # Obtener rango de fechas disponible
+    date_range = ShopifyOrder.objects.aggregate(
+        min_date=Min('created_at'),
+        max_date=Max('created_at')
+    )
+    
+    all_orders = ShopifyOrder.objects.all()
+    
+    if not all_orders.exists():
+        return None
+    
+    # Aplicar filtro de fechas si se proporcionan
+    orders = all_orders
+    if fecha_desde:
+        orders = orders.filter(created_at__date__gte=fecha_desde)
+    if fecha_hasta:
+        orders = orders.filter(created_at__date__lte=fecha_hasta)
     
     if not orders.exists():
-        return None
+        return {
+            'no_data_in_range': True,
+            'fecha_desde': fecha_desde,
+            'fecha_hasta': fecha_hasta,
+            'min_date': date_range['min_date'],
+            'max_date': date_range['max_date'],
+        }
     
     # ========================================
     # 1. MÉTRICAS PRINCIPALES (KPIs)
@@ -308,4 +332,10 @@ def get_shopify_dashboard_data():
         'recent_orders': list(recent_orders),
         'shipping_methods': list(shipping_methods),
         'discount_usage': list(discount_usage),
+        
+        # Fechas para el filtro
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'min_date': date_range['min_date'],
+        'max_date': date_range['max_date'],
     }

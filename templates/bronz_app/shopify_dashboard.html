@@ -109,12 +109,71 @@
 
 <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h3 m-0">📊 Dashboard Ventas Shopify</h1>
             <small class="text-muted">Análisis completo de tu tienda</small>
         </div>
         <a href="{% url 'home' %}" class="btn btn-secondary">← Volver al Home</a>
+    </div>
+    
+    <!-- Filtro de Fechas -->
+    <div class="card mb-4" style="border-radius: 15px; border: 2px solid #95bf46;">
+        <div class="card-body py-3">
+            <form method="get" action="{% url 'shopify_dashboard' %}" class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label fw-bold mb-1">📅 Filtrar por Fechas</label>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="fecha_desde" class="form-label small mb-1">Desde:</label>
+                    <input type="date" class="form-control" id="fecha_desde" name="fecha_desde" 
+                           value="{{ fecha_desde }}"
+                           {% if data.min_date %}min="{{ data.min_date|date:'Y-m-d' }}"{% endif %}>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label for="fecha_hasta" class="form-label small mb-1">Hasta:</label>
+                    <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta" 
+                           value="{{ fecha_hasta }}"
+                           {% if data.max_date %}max="{{ data.max_date|date:'Y-m-d' }}"{% endif %}>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success" style="background: #95bf46; border-color: #95bf46;">
+                        🔍 Filtrar
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'shopify_dashboard' %}" class="btn btn-outline-secondary">
+                        🔄 Ver Todo
+                    </a>
+                </div>
+                <!-- Botones rápidos -->
+                <div class="col-auto ms-auto">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{% url 'shopify_dashboard' %}?fecha_desde=2025-01-01&fecha_hasta=2025-12-31" 
+                           class="btn btn-outline-primary {% if fecha_desde == '2025-01-01' and fecha_hasta == '2025-12-31' %}active{% endif %}">
+                            2025
+                        </a>
+                        <a href="{% url 'shopify_dashboard' %}?fecha_desde=2026-01-01&fecha_hasta=2026-12-31" 
+                           class="btn btn-outline-primary {% if fecha_desde == '2026-01-01' and fecha_hasta == '2026-12-31' %}active{% endif %}">
+                            2026
+                        </a>
+                        <a href="{% url 'shopify_dashboard' %}?fecha_desde=2025-01-01&fecha_hasta=2026-12-31" 
+                           class="btn btn-outline-primary">
+                            2025-2026
+                        </a>
+                    </div>
+                </div>
+            </form>
+            {% if fecha_desde or fecha_hasta %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    📊 Mostrando datos 
+                    {% if fecha_desde %}desde <strong>{{ fecha_desde }}</strong>{% endif %}
+                    {% if fecha_hasta %}hasta <strong>{{ fecha_hasta }}</strong>{% endif %}
+                </small>
+            </div>
+            {% endif %}
+        </div>
     </div>
     
     {% if not data %}
@@ -123,6 +182,13 @@
         <h4>No hay datos de Shopify</h4>
         <p>Importa órdenes desde la sección "Importar Datos" para ver el dashboard.</p>
         <a href="{% url 'importar_datos' %}" class="btn btn-primary mt-3">Ir a Importar Datos</a>
+    </div>
+    {% elif data.no_data_in_range %}
+    <div class="alert alert-warning" role="alert">
+        <h5>⚠️ No hay órdenes en el rango seleccionado</h5>
+        <p>No se encontraron órdenes entre <strong>{{ data.fecha_desde }}</strong> y <strong>{{ data.fecha_hasta }}</strong>.</p>
+        <p>Datos disponibles desde <strong>{{ data.min_date|date:"d/m/Y" }}</strong> hasta <strong>{{ data.max_date|date:"d/m/Y" }}</strong>.</p>
+        <a href="{% url 'shopify_dashboard' %}" class="btn btn-primary">Ver todos los datos</a>
     </div>
     {% else %}
     
